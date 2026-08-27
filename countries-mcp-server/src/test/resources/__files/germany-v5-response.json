@@ -1,0 +1,20 @@
+{
+  "data": {
+    "objects": [
+      {
+        "names": {
+          "common": "Germany",
+          "official": "Federal Republic of Germany"
+        },
+        "capitals": [
+          {
+            "name": "Berlin"
+          }
+        ],
+        "region": "Europe",
+        "subregion": "Western Europe",
+        "population": 83240525
+      }
+    ]
+  }
+}

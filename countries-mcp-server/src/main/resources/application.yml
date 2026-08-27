@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: countries-mcp-server
+  config:
+    import: "optional:file:.env[.properties]"
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+        name: countries-mcp-server
+        version: 1.0.0
+
+server:
+  port: 8081
+
+app:
+  countries:
+    base-url: ${REST_COUNTRIES_BASE_URL:https://api.restcountries.com}
+    api-key: ${REST_COUNTRIES_API_KEY:}
+  timeouts:
+    countries: 5s
+
+logging:
+  level:
+    com.example.cdq.countries: DEBUG
+    org.springframework.ai: DEBUG

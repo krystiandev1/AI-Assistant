@@ -1,0 +1,20 @@
+{
+  "data": {
+    "objects": [
+      {
+        "names": {
+          "common": "France",
+          "official": "French Republic"
+        },
+        "capitals": [
+          {
+            "name": "Paris"
+          }
+        ],
+        "region": "Europe",
+        "subregion": "Western Europe",
+        "population": 67391582
+      }
+    ]
+  }
+}
