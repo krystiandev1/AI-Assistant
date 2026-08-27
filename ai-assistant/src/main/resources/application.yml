@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: cdq-ai-assistant
+  config:
+    import: "optional:file:.env[.properties]"
+  sql:
+    init:
+      mode: always
+  datasource:
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:cdq_assistant}
+    username: ${POSTGRES_USER:cdq}
+    password: ${POSTGRES_PASSWORD:cdq_secret}
+    driver-class-name: org.postgresql.Driver
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        model: qwen3:4b
+        options:
+          # temperature and thinking config locked in after Phase 0F benchmark
+          temperature: 0.0
+      embedding:
+        model: nomic-embed-text
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+        initialize-schema: true
+    mcp:
+      client:
+        request-timeout: 10s
+        streamable-http:
+          connections:
+            countries:
+              url: http://localhost:8081
+              endpoint: /mcp
+        stdio:
+          connections:
+            weather:
+              command: "node"
+              args:
+                - "external/mcp-weather/dist/index.js"
+              env:
+                WEATHER_API_KEY: "${WEATHER_API_KEY:}"
+                WEATHER_API_URL: "https://api.weatherapi.com/v1/current.json"
+
+app:
+  timeouts:
+    countries: 5s
+    weather-mcp: 10s
+  rag:
+    similarity-threshold: ${RAG_SIMILARITY_THRESHOLD:0.5}
+  weather:
+    api-key: ${WEATHER_API_KEY:}
+    mcp-path: ${WEATHER_MCP_PATH:./external/mcp-weather}
+  countries:
+    base-url: ${REST_COUNTRIES_BASE_URL:https://api.restcountries.com}
+    api-key: ${REST_COUNTRIES_API_KEY:}
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.example.cdq: DEBUG
+    org.springframework.ai: DEBUG

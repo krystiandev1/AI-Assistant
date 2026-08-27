@@ -1,0 +1,24 @@
+# CDQ Fraud Guard
+Source: https://www.cdq.com/products/cdq-fraud-guard
+Retrieved: 2026-08-25
+Note: This is a placeholder — replace with curated content from the CDQ website before Phase 4.
+
+## Product overview
+CDQ Fraud Guard is a fraud prevention solution that helps companies protect against payment fraud.
+It verifies bank accounts, provides trust scoring, and alerts on fraudulent activity.
+
+## Bank Account Verification
+CDQ Fraud Guard verifies bank account details to ensure payments reach the intended recipient.
+It checks IBAN validity, account ownership, and flags suspicious account changes.
+
+## Trust Score
+The CDQ Trust Score assesses the risk level of business partners and transactions.
+A high trust score indicates a reliable counterparty; a low score signals elevated fraud risk.
+
+## Fraud Alerts
+CDQ Fraud Guard provides real-time alerts when suspicious patterns are detected,
+such as sudden bank account changes, unusual payment amounts, or known fraud indicators.
+
+## Fraud Case Management
+The solution includes tools for managing fraud cases, documenting incidents,
+and tracking resolution status.
