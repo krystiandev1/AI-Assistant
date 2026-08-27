@@ -1,0 +1,20 @@
+{
+  "name": "mcp-weather",
+  "version": "1.0.0",
+  "description": "Weather MCP server using WeatherAPI.com — forked from semdin/mcp-weather with portability patches",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.32",
+    "typescript": "^5.8.3"
+  }
+}
