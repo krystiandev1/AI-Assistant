@@ -1,14 +1,13 @@
 package com.example.cdq.rag;
 
 import com.example.cdq.config.AppProperties;
+import com.example.cdq.rag.lifecycle.DocumentHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.markdown.MarkdownDocumentReader;
 import org.springframework.ai.reader.markdown.config.MarkdownDocumentReaderConfig;
-import org.springframework.context.ResourceLoaderAware;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -20,28 +19,28 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class DocumentProcessor implements ResourceLoaderAware {
+public class DocumentProcessor {
+
+    public static final String PROCESSOR_VERSION = "v1";
 
     private static final Logger log = LoggerFactory.getLogger(DocumentProcessor.class);
 
     private final AppProperties appProperties;
-    private ResourceLoader resourceLoader;
 
     public DocumentProcessor(AppProperties appProperties) {
         this.appProperties = appProperties;
     }
 
-    @Override
-    public void setResourceLoader(ResourceLoader resourceLoader) {
-        this.resourceLoader = resourceLoader;
-    }
-
-    public List<Document> process() {
-        Resource resource = resourceLoader.getResource(appProperties.rag().resourcePath());
-        List<Document> rawDocs = readMarkdown(resource);
+    /**
+     * Processes a canonical resource (already normalized and hashed by the caller) into enriched chunks.
+     * The caller is responsible for providing consistent canonicalResource, sourceHash, and pipelineFingerprint.
+     */
+    public List<Document> process(Resource canonicalResource, long versionId,
+                                   String sourceHash, String pipelineFingerprint) {
+        List<Document> rawDocs = readMarkdown(canonicalResource);
         logRawOutput(rawDocs);
-        Map<String, String> parentSectionMap = buildParentSectionMap(resource);
-        return enrich(rawDocs, parentSectionMap);
+        Map<String, String> parentSectionMap = buildParentSectionMap(canonicalResource);
+        return enrich(rawDocs, parentSectionMap, versionId, sourceHash, pipelineFingerprint);
     }
 
     private List<Document> readMarkdown(Resource resource) {
@@ -53,7 +52,6 @@ public class DocumentProcessor implements ResourceLoaderAware {
         return new MarkdownDocumentReader(resource, config).read();
     }
 
-    // Krok 0: log actual MarkdownDocumentReader output to understand its behavior
     private void logRawOutput(List<Document> docs) {
         log.info("[DocumentProcessor] MarkdownDocumentReader produced {} document(s)", docs.size());
         for (int i = 0; i < docs.size(); i++) {
@@ -66,8 +64,7 @@ public class DocumentProcessor implements ResourceLoaderAware {
         }
     }
 
-    // Parses heading hierarchy from raw Markdown: maps each ### heading → its parent ## heading.
-    // Independent of MarkdownDocumentReader behavior.
+    // Parses heading hierarchy from the canonical resource: maps each ### heading → its parent ## heading.
     private Map<String, String> buildParentSectionMap(Resource resource) {
         Map<String, String> parentMap = new LinkedHashMap<>();
         try {
@@ -87,7 +84,8 @@ public class DocumentProcessor implements ResourceLoaderAware {
         return parentMap;
     }
 
-    private List<Document> enrich(List<Document> rawDocs, Map<String, String> parentSectionMap) {
+    private List<Document> enrich(List<Document> rawDocs, Map<String, String> parentSectionMap,
+                                   long versionId, String sourceHash, String pipelineFingerprint) {
         String sourceId  = appProperties.rag().sourceId();
         String sourceUrl = appProperties.rag().sourceUrl();
         List<Document> result = new ArrayList<>();
@@ -103,10 +101,14 @@ public class DocumentProcessor implements ResourceLoaderAware {
             String parentSection = parentSectionMap.get(section);
 
             Map<String, Object> meta = new HashMap<>(doc.getMetadata());
-            meta.put("sourceId",    sourceId);
-            meta.put("sourceUrl",   sourceUrl);
-            meta.put("section",     section);
-            meta.put("chunkIndex",  chunkIndex++);
+            meta.put("sourceId",            sourceId);
+            meta.put("sourceUrl",           sourceUrl);
+            meta.put("section",             section);
+            meta.put("chunkIndex",          chunkIndex++);
+            meta.put("sourceVersionId",     versionId);
+            meta.put("sourceHash",          sourceHash);
+            meta.put("pipelineFingerprint", pipelineFingerprint);
+            meta.put("chunkHash",           DocumentHasher.sha256Hex(doc.getText()));
             if (parentSection != null) {
                 meta.put("parentSection", parentSection);
             }
@@ -119,16 +121,12 @@ public class DocumentProcessor implements ResourceLoaderAware {
         return result;
     }
 
-    // Extracts the section name from MarkdownDocumentReader metadata.
-    // MarkdownDocumentReader (Spring AI 2.0.1) stores:
-    //   category = "header_1" | "header_2" | "header_3"  (heading level, not title)
-    //   title    = actual heading text                     (what we want as section name)
+    // MarkdownDocumentReader (Spring AI 2.0.1) stores: category = "header_1|2|3", title = heading text
     private String extractSection(Document doc) {
         Object title = doc.getMetadata().get("title");
         if (title != null && !title.toString().isBlank()) {
             return title.toString().trim();
         }
-        // Fallback: derive from content (helps diagnose unexpected reader output in future versions)
         return doc.getText().lines()
             .filter(l -> !l.isBlank())
             .findFirst()

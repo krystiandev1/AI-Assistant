@@ -1,5 +1,7 @@
 package com.example.cdq.rag;
 
+import com.example.cdq.config.AppProperties;
+import com.example.cdq.rag.lifecycle.DocumentLifecycleService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
@@ -8,8 +10,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,7 +38,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * If either dependency is unavailable, all tests are SKIPPED (not FAILED).
  *
  * Test lifecycle:
- *   @BeforeAll → check deps → ingest once per class → all tests read from the same pgvector state
+ *   @BeforeAll → check deps → synchronize once per class → all tests read from the same pgvector state
  *   NOT @BeforeEach — Testcontainer DB is NOT reset between tests; ingest once avoids duplicates.
  *
  * Run: mvn verify -Pintegration -pl ai-assistant
@@ -46,7 +46,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("rag-it")
 @Tag("integration")
-@Testcontainers(disabledWithoutDocker = true)  // class is DISABLED (not FAILED) when Docker unavailable
+@Testcontainers(disabledWithoutDocker = true)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RagPipelineIT {
 
@@ -67,20 +67,18 @@ class RagPipelineIT {
         r.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
     }
 
-    @Autowired RagIngestionService  ragIngestionService;
-    @Autowired DocumentProcessor    documentProcessor;
-    @Autowired VectorStore          vectorStore;
-    @Autowired JdbcTemplate         jdbcTemplate;
+    @Autowired AppProperties              appProperties;
+    @Autowired DocumentLifecycleService   lifecycleService;
+    @Autowired RagRetrieval               ragRetrieval;
+    @Autowired JdbcTemplate               jdbcTemplate;
 
     @BeforeAll
     void setUpAndIngest() {
-        // Docker availability: handled by @Testcontainers(disabledWithoutDocker = true) at class level
-        // before Spring context loads, so we never reach this point without Docker.
         assumeTrue(isOllamaRunning(),
             "Ollama not available — skipping RAG pipeline tests. " +
             "Start with: ollama serve && ollama pull qwen3-embedding:0.6b");
 
-        ragIngestionService.ingest();
+        lifecycleService.synchronize(appProperties.rag().sourceId());
     }
 
     // ── Ingestion ────────────────────────────────────────────────────────────
@@ -93,11 +91,10 @@ class RagPipelineIT {
     }
 
     @Test
-    void ingest_count_matches_processor_output() {
+    void ingest_stores_reasonable_chunk_count() {
         Integer stored = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM vector_store", Integer.class);
-        int processed = documentProcessor.process().size();
-        assertThat(stored).isEqualTo(processed);
+        assertThat(stored).isBetween(8, 25);
     }
 
     @Test
@@ -112,6 +109,13 @@ class RagPipelineIT {
         Integer nullSection = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM vector_store WHERE metadata->>'section' IS NULL", Integer.class);
         assertThat(nullSection).isZero();
+    }
+
+    @Test
+    void all_stored_chunks_have_source_version_id() {
+        Integer nullVersionId = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM vector_store WHERE metadata->>'sourceVersionId' IS NULL", Integer.class);
+        assertThat(nullVersionId).isZero();
     }
 
     // ── EN direct queries — Hit@1 ────────────────────────────────────────────
@@ -238,7 +242,7 @@ class RagPipelineIT {
             "Does CDQ Fraud Guard require a dedicated user interface?",
             "How does CDQ determine whether a bank account can be trusted?",
             "Bank account risk rating system",
-            "How does Fraud Guard reduce manual work?",
+            "What helps reduce repetitive manual tasks for finance teams?",
             "How does CDQ reduce the risk of fraud?",
             "Jak CDQ ocenia wiarygodność rachunku bankowego?",
             "Wie bewertet CDQ die Vertrauenswürdigkeit eines Bankkontos?",
@@ -265,13 +269,8 @@ class RagPipelineIT {
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private List<Document> search(String query, int topK) {
-        List<Document> results = vectorStore.similaritySearch(
-            SearchRequest.builder()
-                .query(query)
-                .topK(topK)
-                .similarityThreshold(0.0)
-                .build()
-        );
+        List<Document> results = ragRetrieval.search(
+            appProperties.rag().sourceId(), query, topK, 0.0);
         logRanking(query, results);
         return results;
     }

@@ -15,3 +15,7 @@ spring:
     vectorstore:
       pgvector:
         initialize-schema: false
+
+app:
+  rag:
+    startup-sync-enabled: false   # H2 profile — no lifecycle tables

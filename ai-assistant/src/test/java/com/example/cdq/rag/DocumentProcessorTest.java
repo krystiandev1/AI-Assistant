@@ -1,15 +1,18 @@
 package com.example.cdq.rag;
 
 import com.example.cdq.config.AppProperties;
+import com.example.cdq.rag.lifecycle.DocumentHasher;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.markdown.MarkdownDocumentReader;
 import org.springframework.ai.reader.markdown.config.MarkdownDocumentReaderConfig;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
@@ -25,12 +28,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DocumentProcessorTest {
 
-    private static final String RESOURCE_PATH = "rag/cdq-fraud-guard.md";
+    private static final String RESOURCE_PATH     = "rag/cdq-fraud-guard.md";
+    private static final long   TEST_VERSION_ID   = 42L;
+    private static final String TEST_FINGERPRINT  = "a".repeat(64);
+
     private static DocumentProcessor processor;
     private static List<Document> documents;
+    private static String sourceHash;
+    private static Resource canonicalResource;
 
     @BeforeAll
-    static void setUp() {
+    static void setUp() throws IOException {
         AppProperties props = new AppProperties(
             new AppProperties.Countries("http://localhost", "key"),
             new AppProperties.Timeouts(Duration.ofSeconds(5), Duration.ofSeconds(10)),
@@ -39,10 +47,16 @@ class DocumentProcessorTest {
                 "classpath:" + RESOURCE_PATH),
             new AppProperties.Weather("key", "./mcp-weather")
         );
-        DefaultResourceLoader resourceLoader = new DefaultResourceLoader();
         processor = new DocumentProcessor(props);
-        processor.setResourceLoader(resourceLoader);
-        documents = processor.process();
+
+        // Mirrors what DocumentLifecycleService does: normalize once, hash once, pass ByteArrayResource
+        String rawContent = new ClassPathResource(RESOURCE_PATH)
+            .getContentAsString(StandardCharsets.UTF_8);
+        String canonicalContent = DocumentHasher.normalize(rawContent);
+        sourceHash = DocumentHasher.sha256Hex(canonicalContent);
+        canonicalResource = new ByteArrayResource(canonicalContent.getBytes(StandardCharsets.UTF_8));
+
+        documents = processor.process(canonicalResource, TEST_VERSION_ID, sourceHash, TEST_FINGERPRINT);
     }
 
     // ── Krok 0: diagnostics ──────────────────────────────────────────────────
@@ -73,7 +87,6 @@ class DocumentProcessorTest {
         }
         System.out.println("=== END RAW OUTPUT ===");
 
-        // Always passes — diagnostic only
         assertThat(rawDocs).isNotEmpty();
     }
 
@@ -168,15 +181,66 @@ class DocumentProcessorTest {
         }
     }
 
+    // ── Lifecycle metadata ───────────────────────────────────────────────────
+
+    @Test
+    void all_chunks_have_sourceVersionId_metadata() {
+        assertThat(documents).allSatisfy(doc -> {
+            assertThat(doc.getMetadata()).containsKey("sourceVersionId");
+            assertThat(doc.getMetadata().get("sourceVersionId")).isEqualTo(TEST_VERSION_ID);
+        });
+    }
+
+    @Test
+    void all_chunks_have_sourceHash_metadata() {
+        assertThat(documents).allSatisfy(doc -> {
+            assertThat(doc.getMetadata()).containsKey("sourceHash");
+            assertThat(doc.getMetadata().get("sourceHash").toString()).hasSize(64);
+        });
+        // All chunks carry the same sourceHash (it's per-document, not per-chunk)
+        assertThat(documents).allSatisfy(doc ->
+            assertThat(doc.getMetadata().get("sourceHash")).isEqualTo(sourceHash)
+        );
+    }
+
+    @Test
+    void all_chunks_have_pipelineFingerprint_metadata() {
+        assertThat(documents).allSatisfy(doc -> {
+            assertThat(doc.getMetadata()).containsKey("pipelineFingerprint");
+            assertThat(doc.getMetadata().get("pipelineFingerprint")).isEqualTo(TEST_FINGERPRINT);
+        });
+    }
+
+    @Test
+    void all_chunks_have_chunkHash_metadata() {
+        assertThat(documents).allSatisfy(doc -> {
+            assertThat(doc.getMetadata()).containsKey("chunkHash");
+            assertThat(doc.getMetadata().get("chunkHash").toString()).hasSize(64);
+        });
+    }
+
+    @Test
+    void chunk_hashes_are_unique_per_chunk() {
+        long distinctHashes = documents.stream()
+            .map(d -> d.getMetadata().get("chunkHash").toString())
+            .distinct()
+            .count();
+        assertThat(distinctHashes).isEqualTo(documents.size());
+    }
+
+    // ── Determinism ──────────────────────────────────────────────────────────
+
     @Test
     void processing_is_deterministic() {
-        List<Document> second = processor.process();
+        List<Document> second = processor.process(canonicalResource, TEST_VERSION_ID, sourceHash, TEST_FINGERPRINT);
 
         assertThat(second).hasSameSizeAs(documents);
         for (int i = 0; i < documents.size(); i++) {
             assertThat(second.get(i).getText()).isEqualTo(documents.get(i).getText());
             assertThat(second.get(i).getMetadata().get("section"))
                 .isEqualTo(documents.get(i).getMetadata().get("section"));
+            assertThat(second.get(i).getMetadata().get("chunkHash"))
+                .isEqualTo(documents.get(i).getMetadata().get("chunkHash"));
         }
     }
 

@@ -5,8 +5,12 @@ spring:
       - org.springframework.ai.mcp.client.common.autoconfigure.McpToolCallbackAutoConfiguration
   sql:
     init:
-      mode: never   # knowledge_source_state not needed in Stage 2
+      mode: always   # creates rag_source + rag_source_version tables (required for DocumentLifecycleService)
   ai:
     vectorstore:
       pgvector:
         initialize-schema: true  # creates vector_store table automatically
+
+app:
+  rag:
+    startup-sync-enabled: false   # RagPipelineIT calls synchronize() explicitly in @BeforeAll

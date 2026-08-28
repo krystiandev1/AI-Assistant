@@ -55,6 +55,7 @@ app:
     source-id: cdq-fraud-guard
     source-url: https://www.cdq.com/products/cdq-fraud-guard
     resource-path: classpath:rag/cdq-fraud-guard.md
+    startup-sync-enabled: true
   weather:
     api-key: ${WEATHER_API_KEY:}
     mcp-path: ${WEATHER_MCP_PATH:./external/mcp-weather}

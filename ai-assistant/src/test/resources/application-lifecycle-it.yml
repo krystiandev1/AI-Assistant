@@ -1,0 +1,12 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.mcp.client.common.autoconfigure.McpClientAutoConfiguration
+      - org.springframework.ai.mcp.client.common.autoconfigure.McpToolCallbackAutoConfiguration
+  sql:
+    init:
+      mode: always   # creates rag_source + rag_source_version tables
+
+app:
+  rag:
+    startup-sync-enabled: false   # tests call synchronize() manually
