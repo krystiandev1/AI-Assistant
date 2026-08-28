@@ -15,7 +15,13 @@ public record AppProperties(
 
     public record Timeouts(Duration countries, Duration weatherMcp) {}
 
-    public record Rag(double similarityThreshold, int embeddingExpectedDimensions) {}
+    public record Rag(
+        double similarityThreshold,
+        int embeddingExpectedDimensions,
+        String sourceId,
+        String sourceUrl,
+        String resourcePath
+    ) {}
 
     public record Weather(String apiKey, String mcpPath) {}
 }

@@ -1,0 +1,12 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.mcp.client.common.autoconfigure.McpClientAutoConfiguration
+      - org.springframework.ai.mcp.client.common.autoconfigure.McpToolCallbackAutoConfiguration
+  sql:
+    init:
+      mode: never   # knowledge_source_state not needed in Stage 2
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: true  # creates vector_store table automatically

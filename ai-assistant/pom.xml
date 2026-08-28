@@ -61,6 +61,12 @@
             <artifactId>spring-ai-rag</artifactId>
         </dependency>
 
+        <!-- Spring AI: Markdown document reader (MarkdownDocumentReader) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-markdown-document-reader</artifactId>
+        </dependency>
+
         <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
