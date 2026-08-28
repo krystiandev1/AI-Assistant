@@ -20,12 +20,12 @@ spring:
           # temperature and thinking config locked in after Phase 0F benchmark
           temperature: 0.0
       embedding:
-        model: nomic-embed-text
+        model: qwen3-embedding:0.6b
     vectorstore:
       pgvector:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        dimensions: 768
+        dimensions: 1024
         initialize-schema: true
     mcp:
       client:
@@ -51,6 +51,7 @@ app:
     weather-mcp: 10s
   rag:
     similarity-threshold: ${RAG_SIMILARITY_THRESHOLD:0.5}
+    embedding-expected-dimensions: 1024
   weather:
     api-key: ${WEATHER_API_KEY:}
     mcp-path: ${WEATHER_MCP_PATH:./external/mcp-weather}
