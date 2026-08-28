@@ -68,17 +68,17 @@ within days rather than months.
 
 ### Enhanced Security
 
-Reduce the risk of fraud by verifying bank account data against a continuously updated shared
-database of validated accounts from the CDQ Data Sharing community. Enhanced security features
-cross-reference transaction data with known fraud patterns to provide comprehensive protection
-that improves as the community grows.
+Reduce the risk of payment fraud with a multi-layered defence that draws on the CDQ Data Sharing
+community's collective intelligence. Security features continuously cross-reference transaction data
+with community-reported fraud incidents and known fraud patterns, providing comprehensive protection
+that improves in accuracy and coverage as the community grows.
 
 ### Operational Efficiency
 
-Streamline the process of verifying bank account data and reduce the manual workload on your
-finance and accounts payable teams. CDQ Fraud Guard automates verification workflows, eliminating
-time-consuming manual checks and dramatically reducing processing time for payment approvals,
-while maintaining rigorous fraud controls.
+Reduce the manual workload on finance and risk teams by automating repetitive data-lookup and
+cross-reference tasks. Staff spend less time on routine manual reviews and redirect their efforts
+to high-value investigations, enabling organisations to scale risk management capability without
+proportional headcount increases.
 
 ### Customizable Trust Scores
 

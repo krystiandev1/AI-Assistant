@@ -95,6 +95,9 @@ public class DocumentProcessor implements ResourceLoaderAware {
 
         for (Document doc : rawDocs) {
             if (doc.getText().isBlank()) continue;
+            // Skip document-level header (header_1): contains only source metadata, not retrievable knowledge.
+            // Its embedding (just the source URL) matches all CDQ-branded queries and pollutes ranking.
+            if ("header_1".equals(doc.getMetadata().get("category"))) continue;
 
             String section = extractSection(doc);
             String parentSection = parentSectionMap.get(section);
