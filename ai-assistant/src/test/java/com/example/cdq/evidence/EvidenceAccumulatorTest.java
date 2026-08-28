@@ -64,13 +64,14 @@ class EvidenceAccumulatorTest {
 
         acc.recordRagDocument("cdq-fraud-guard",
             "https://www.cdq.com/products/cdq-fraud-guard",
-            "Bank Account Verification", 2);
+            "Bank Account Verification", 2, 42L);
 
         ExecutionEvidence evidence = acc.build();
 
         assertThat(evidence.ragDocuments()).hasSize(1);
         assertThat(evidence.ragDocuments().get(0).section()).isEqualTo("Bank Account Verification");
         assertThat(evidence.ragDocuments().get(0).chunkIndex()).isEqualTo(2);
+        assertThat(evidence.ragDocuments().get(0).sourceVersionId()).isEqualTo(42L);
     }
 
     @Test

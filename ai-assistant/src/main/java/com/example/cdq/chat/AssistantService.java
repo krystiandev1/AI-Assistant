@@ -67,7 +67,8 @@ class AssistantService {
                             (String) meta.get("sourceId"),
                             (String) meta.get("sourceUrl"),
                             (String) meta.getOrDefault("section", "general"),
-                            toInt(meta.getOrDefault("chunkIndex", 0))
+                            toInt(meta.getOrDefault("chunkIndex", 0)),
+                            toLong(meta.get("sourceVersionId"))
                         );
                     });
             }
@@ -84,5 +85,11 @@ class AssistantService {
         if (value instanceof Integer i) return i;
         if (value instanceof Number n) return n.intValue();
         return 0;
+    }
+
+    private static long toLong(Object value) {
+        if (value instanceof Long l) return l;
+        if (value instanceof Number n) return n.longValue();
+        return 0L;
     }
 }

@@ -1,0 +1,18 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.mcp.client.common.autoconfigure.McpClientAutoConfiguration
+      - org.springframework.ai.mcp.client.common.autoconfigure.McpToolCallbackAutoConfiguration
+  sql:
+    init:
+      mode: always
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+
+app:
+  rag:
+    startup-sync-enabled: false
+    source-id: test-chat-version        # isolated source key — ActiveVersionDocumentRetriever uses this
+    source-url: https://example.com/test-chat-version

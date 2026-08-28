@@ -1,12 +1,11 @@
 package com.example.cdq.config;
 
 import org.springframework.ai.chat.client.ChatClient;
+import com.example.cdq.rag.ActiveVersionDocumentRetriever;
 import org.springframework.ai.chat.client.advisor.ToolCallingAdvisor;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
-import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,15 +25,11 @@ class ChatConfig {
     private Resource systemPromptResource;
 
     @Bean
-    ChatClient chatClient(ChatModel chatModel, AppProperties props, VectorStore vectorStore) throws IOException {
+    ChatClient chatClient(ChatModel chatModel, ActiveVersionDocumentRetriever documentRetriever) throws IOException {
         String systemPrompt = systemPromptResource.getContentAsString(StandardCharsets.UTF_8);
 
         RetrievalAugmentationAdvisor ragAdvisor = RetrievalAugmentationAdvisor.builder()
-            .documentRetriever(VectorStoreDocumentRetriever.builder()
-                .vectorStore(vectorStore)
-                .topK(4)
-                .similarityThreshold(props.rag().similarityThreshold())
-                .build())
+            .documentRetriever(documentRetriever)
             .queryAugmenter(ContextualQueryAugmenter.builder()
                 .allowEmptyContext(true)
                 .build())

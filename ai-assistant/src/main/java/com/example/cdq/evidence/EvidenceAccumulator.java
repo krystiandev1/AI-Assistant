@@ -29,8 +29,8 @@ public final class EvidenceAccumulator {
         toolCalls.add(new ToolCallEvidence(server, tool, argumentsJson, invocationStatus, outcome, errorCode));
     }
 
-    public void recordRagDocument(String sourceId, String sourceUrl, String section, int chunkIndex) {
-        ragDocuments.add(new RagEvidence(sourceId, sourceUrl, section, chunkIndex));
+    public void recordRagDocument(String sourceId, String sourceUrl, String section, int chunkIndex, long sourceVersionId) {
+        ragDocuments.add(new RagEvidence(sourceId, sourceUrl, section, chunkIndex, sourceVersionId));
     }
 
     public String requestId() {
