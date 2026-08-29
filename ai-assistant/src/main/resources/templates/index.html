@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDQ AI Assistant</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 16px 24px;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        header p {
+            font-size: 0.8rem;
+            color: #a0a8c0;
+            margin-top: 2px;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 16px;
+            min-height: 0;
+        }
+
+        #chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
+        }
+
+        .message.user {
+            align-self: flex-end;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+            color: #666;
+        }
+
+        .message.user .message-label { text-align: right; }
+
+        .bubble {
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.user .bubble {
+            background: #1a1a2e;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .bubble {
+            background: #fff;
+            color: #1a1a1a;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.error .bubble {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #991b1b;
+        }
+
+        .thinking {
+            align-self: flex-start;
+        }
+
+        .thinking .bubble {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            color: #666;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ddd;
+            border-top-color: #1a1a2e;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Evidence panel */
+        .evidence-toggle {
+            margin-top: 6px;
+            font-size: 0.75rem;
+            color: #555;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            padding: 2px 0;
+        }
+
+        .evidence-toggle:hover { color: #1a1a2e; }
+
+        .evidence-panel {
+            margin-top: 4px;
+            background: #f8f9fc;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.78rem;
+            color: #444;
+            display: none;
+        }
+
+        .evidence-panel.open { display: block; }
+
+        .evidence-section { margin-bottom: 8px; }
+        .evidence-section:last-child { margin-bottom: 0; }
+
+        .evidence-section h4 {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .evidence-item {
+            padding: 3px 0;
+            border-bottom: 1px solid #ebebeb;
+            line-height: 1.4;
+        }
+        .evidence-item:last-child { border-bottom: none; }
+
+        .tag {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+
+        .tag-rag { background: #dbeafe; color: #1d4ed8; }
+        .tag-mcp { background: #d1fae5; color: #065f46; }
+        .tag-error { background: #fef2f2; color: #991b1b; }
+
+        /* Input area */
+        .input-area {
+            flex-shrink: 0;
+            background: #fff;
+            border-top: 1px solid #e0e0e0;
+            padding: 16px 0;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        #question-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            resize: none;
+            line-height: 1.4;
+            height: 48px;
+            max-height: 160px;
+            overflow-y: auto;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        #question-input:focus { border-color: #1a1a2e; }
+        #question-input:disabled { background: #f5f5f5; }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, background 0.15s;
+            white-space: nowrap;
+            height: 48px;
+        }
+
+        .btn-primary {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) { background: #2a2a4e; }
+        .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #444;
+            font-size: 0.8rem;
+            padding: 6px 14px;
+            height: auto;
+        }
+
+        .btn-secondary:hover { background: #e0e0e0; }
+
+        /* Quick examples */
+        .examples-section {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .examples-label {
+            font-size: 0.75rem;
+            color: #888;
+            flex-shrink: 0;
+        }
+
+        .example-chip {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            background: #f0f0f4;
+            border: 1px solid #d8d8e0;
+            border-radius: 20px;
+            color: #333;
+            cursor: pointer;
+            transition: background 0.1s;
+            font-family: inherit;
+        }
+
+        .example-chip:hover { background: #e0e0ea; }
+
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 8px;
+        }
+
+        #empty-state {
+            text-align: center;
+            color: #aaa;
+            margin: auto;
+            padding: 40px 0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>CDQ AI Assistant</h1>
+    <p>Local AI assistant powered by Ollama, RAG and MCP</p>
+</header>
+
+<div class="main">
+    <div id="chat-area">
+        <div id="empty-state">Ask a question to get started.</div>
+    </div>
+
+    <div class="input-area">
+        <div class="input-row">
+            <textarea id="question-input"
+                      placeholder="Ask a question..."
+                      rows="1"
+                      aria-label="Question"></textarea>
+            <button class="btn btn-primary" id="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+
+        <div class="examples-section">
+            <span class="examples-label">Try an example:</span>
+            <button class="example-chip" onclick="fillExample('What is the capital city of Germany?')">Capital of Germany</button>
+            <button class="example-chip" onclick="fillExample('What is the temperature currently in Munich?')">Temperature in Munich</button>
+            <button class="example-chip" onclick="fillExample('What is the temperature of the capital of Germany currently?')">Temperature of German capital</button>
+            <button class="example-chip" onclick="fillExample('What do you know about Berlin?')">About Berlin</button>
+            <button class="example-chip" onclick="fillExample('How does CDQ Fraud Guard reduce manual work?')">CDQ Fraud Guard</button>
+        </div>
+
+        <div class="toolbar">
+            <button class="btn btn-secondary" onclick="clearChat()">Clear chat</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const chatArea = document.getElementById('chat-area');
+    const input = document.getElementById('question-input');
+    const sendBtn = document.getElementById('send-btn');
+    const emptyState = document.getElementById('empty-state');
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    input.addEventListener('input', () => {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+    });
+
+    function fillExample(text) {
+        input.value = text;
+        input.focus();
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+    }
+
+    function clearChat() {
+        chatArea.innerHTML = '';
+        chatArea.appendChild(emptyState);
+        emptyState.style.display = '';
+    }
+
+    function appendMessage(role, text, isError) {
+        emptyState.style.display = 'none';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message ' + (isError ? 'error' : role);
+
+        const label = document.createElement('div');
+        label.className = 'message-label';
+        label.textContent = role === 'user' ? 'You' : 'Assistant';
+        wrapper.appendChild(label);
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+        wrapper.appendChild(bubble);
+
+        chatArea.appendChild(wrapper);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        return wrapper;
+    }
+
+    function appendThinking() {
+        emptyState.style.display = 'none';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message thinking';
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner';
+        bubble.appendChild(spinner);
+
+        const text = document.createElement('span');
+        text.textContent = 'Thinking…';
+        bubble.appendChild(text);
+
+        wrapper.appendChild(bubble);
+        chatArea.appendChild(wrapper);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        return wrapper;
+    }
+
+    function appendAssistantMessage(answer, evidence) {
+        emptyState.style.display = 'none';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message assistant';
+
+        const label = document.createElement('div');
+        label.className = 'message-label';
+        label.textContent = 'Assistant';
+        wrapper.appendChild(label);
+
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = answer;
+        wrapper.appendChild(bubble);
+
+        const hasToolCalls = evidence && evidence.toolCalls && evidence.toolCalls.length > 0;
+        const hasRag = evidence && evidence.ragDocuments && evidence.ragDocuments.length > 0;
+
+        if (hasToolCalls || hasRag) {
+            const toggle = document.createElement('button');
+            toggle.className = 'evidence-toggle';
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.textContent = '▶ Sources / Evidence';
+
+            const panel = document.createElement('div');
+            panel.className = 'evidence-panel';
+
+            if (hasRag) {
+                const section = document.createElement('div');
+                section.className = 'evidence-section';
+
+                const h4 = document.createElement('h4');
+                h4.textContent = 'RAG Documents';
+                section.appendChild(h4);
+
+                evidence.ragDocuments.forEach(doc => {
+                    const item = document.createElement('div');
+                    item.className = 'evidence-item';
+
+                    const tag = document.createElement('span');
+                    tag.className = 'tag tag-rag';
+                    tag.textContent = 'RAG';
+                    item.appendChild(tag);
+
+                    const detail = document.createTextNode(
+                        (doc.sourceId || 'unknown') +
+                        (doc.section ? ' — ' + doc.section : '') +
+                        (doc.chunkIndex !== undefined ? ' [chunk ' + doc.chunkIndex + ']' : '')
+                    );
+                    item.appendChild(detail);
+                    section.appendChild(item);
+                });
+
+                panel.appendChild(section);
+            }
+
+            if (hasToolCalls) {
+                const section = document.createElement('div');
+                section.className = 'evidence-section';
+
+                const h4 = document.createElement('h4');
+                h4.textContent = 'MCP Tool Calls';
+                section.appendChild(h4);
+
+                evidence.toolCalls.forEach(tc => {
+                    const item = document.createElement('div');
+                    item.className = 'evidence-item';
+
+                    const isErr = tc.outcome === 'ERROR' || tc.invocationStatus === 'FAILED';
+                    const tag = document.createElement('span');
+                    tag.className = 'tag ' + (isErr ? 'tag-error' : 'tag-mcp');
+                    tag.textContent = 'MCP';
+                    item.appendChild(tag);
+
+                    const detail = document.createTextNode(
+                        (tc.server || '') + ' → ' + (tc.tool || '') +
+                        (tc.outcome && tc.outcome !== 'OK' ? ' (' + tc.outcome + ')' : '')
+                    );
+                    item.appendChild(detail);
+                    section.appendChild(item);
+                });
+
+                panel.appendChild(section);
+            }
+
+            toggle.addEventListener('click', () => {
+                const open = panel.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', open);
+                toggle.textContent = (open ? '▼' : '▶') + ' Sources / Evidence';
+            });
+
+            wrapper.appendChild(toggle);
+            wrapper.appendChild(panel);
+        }
+
+        chatArea.appendChild(wrapper);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const question = input.value.trim();
+        if (!question) return;
+
+        appendMessage('user', question, false);
+        input.value = '';
+        input.style.height = '48px';
+        input.disabled = true;
+        sendBtn.disabled = true;
+
+        const thinkingEl = appendThinking();
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question })
+            });
+
+            thinkingEl.remove();
+
+            if (!response.ok) {
+                let errorMsg = 'Request failed (HTTP ' + response.status + '). Check whether Ollama and MCP services are running.';
+                try {
+                    const err = await response.json();
+                    if (err.message) errorMsg += '\n\nDetail: ' + err.message;
+                } catch (_) {}
+                appendMessage('assistant', errorMsg, true);
+                return;
+            }
+
+            const data = await response.json();
+            appendAssistantMessage(data.answer || '(no answer)', data.evidence);
+
+        } catch (err) {
+            thinkingEl.remove();
+            appendMessage('assistant',
+                'Request failed. Check whether Ollama and MCP services are running.\n\nDetail: ' + err.message,
+                true);
+        } finally {
+            input.disabled = false;
+            sendBtn.disabled = false;
+            input.focus();
+        }
+    }
+</script>
+</body>
+</html>
