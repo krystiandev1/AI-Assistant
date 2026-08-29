@@ -15,9 +15,8 @@ spring:
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
       chat:
-        model: qwen3:4b
+        model: ${OLLAMA_CHAT_MODEL:qwen3:4b-instruct}
         options:
-          # temperature and thinking config locked in after Phase 0F benchmark
           temperature: 0.0
       embedding:
         model: qwen3-embedding:0.6b

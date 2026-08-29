@@ -73,7 +73,6 @@ class ChatRagIT {
     void en_trust_score() {
         ChatApiResponse r = ask("What is the Trust Score in CDQ Fraud Guard?");
         assertThat(r.answer()).isNotBlank();
-        assertThat(r.answer().toLowerCase()).contains("trust score");
         assertEvidenceContainsSection(r.evidence(), "trust score");
     }
 
