@@ -136,6 +136,18 @@ Wait for: `Started CountriesMcpApplication` (typically ~2 seconds).
 java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
 ```
 
+> **Windows + SSL-intercepting antivirus (Avast, Kaspersky, ESET, Norton)?**
+> These tools intercept HTTPS traffic and replace certificates with their own root CA. The JVM's
+> built-in truststore doesn't know this CA, causing `PKIX path building failed` errors for country
+> data. Fix: tell the JVM to use the Windows certificate store instead:
+> ```bash
+> java -Djavax.net.ssl.trustStoreType=Windows-ROOT -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
+> ```
+> The same flag applies when starting the countries MCP server:
+> ```bash
+> ./mvnw -pl countries-mcp-server spring-boot:run -Dspring-boot.run.jvmArguments="-Djavax.net.ssl.trustStoreType=Windows-ROOT"
+> ```
+
 Wait for: `Started AssistantApplication`. The RAG ingestion runs automatically on first startup (~5 seconds).
 
 The chat interface is available at **http://localhost:8080**.
