@@ -59,19 +59,20 @@ The application requires two free API keys:
 | REST Countries v5 | https://restcountries.com/sign-up | Country data (capital, region, population) |
 | WeatherAPI.com | https://www.weatherapi.com/signup.aspx | Current weather by city |
 
-Both are free tier with no credit card required. After signing up, create a `.env` file in the project root:
+Both are free tier with no credit card required. After signing up:
+
+**Root `.env`** (read by the ai-assistant):
 
 ```bash
 cp .env.example .env
-# then edit .env and fill in your keys
+# then edit .env and fill in your key
 ```
 
 ```
-REST_COUNTRIES_API_KEY=your_key_here
 WEATHER_API_KEY=your_key_here
 ```
 
-Also create `countries-mcp-server/.env` with the countries key (the countries server reads its own working directory):
+**`countries-mcp-server/.env`** (read by the Countries MCP server from its own working directory):
 
 ```
 REST_COUNTRIES_API_KEY=your_key_here
@@ -309,7 +310,6 @@ See [`docs/model-performance.md`](docs/model-performance.md).
 | `POSTGRES_USER` | `cdq` | Database user |
 | `POSTGRES_PASSWORD` | `cdq_secret` | Database password |
 | `RAG_SIMILARITY_THRESHOLD` | `0.5` | Minimum cosine similarity for retrieval |
-| `REST_COUNTRIES_API_KEY` | _(empty)_ | REST Countries v5 API key |
 | `WEATHER_API_KEY` | _(empty)_ | WeatherAPI.com free tier key |
 
 ---

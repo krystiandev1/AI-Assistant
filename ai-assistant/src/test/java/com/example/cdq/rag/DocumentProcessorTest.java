@@ -13,7 +13,6 @@ import org.springframework.core.io.Resource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Unit tests for DocumentProcessor. No Spring context, no Ollama, no database.
  *
- * Step 0 (Krok 0): test_markdown_reader_raw_output reveals what MarkdownDocumentReader
+ * test_markdown_reader_raw_output reveals what MarkdownDocumentReader
  * actually produces for our document — use its output to verify DocumentProcessor logic.
  *
  * Run: mvn test -pl ai-assistant
@@ -40,12 +39,9 @@ class DocumentProcessorTest {
     @BeforeAll
     static void setUp() throws IOException {
         AppProperties props = new AppProperties(
-            new AppProperties.Countries("http://localhost", "key"),
-            new AppProperties.Timeouts(Duration.ofSeconds(5), Duration.ofSeconds(10)),
             new AppProperties.Rag(0.5, 1024, "cdq-fraud-guard",
                 "https://www.cdq.com/products/cdq-fraud-guard",
-                "classpath:" + RESOURCE_PATH),
-            new AppProperties.Weather("key", "./mcp-weather")
+                "classpath:" + RESOURCE_PATH)
         );
         processor = new DocumentProcessor(props);
 
@@ -59,7 +55,7 @@ class DocumentProcessorTest {
         documents = processor.process(canonicalResource, TEST_VERSION_ID, sourceHash, TEST_FINGERPRINT);
     }
 
-    // ── Krok 0: diagnostics ──────────────────────────────────────────────────
+    // ── Diagnostics ──────────────────────────────────────────────────────────
 
     /**
      * Logs what MarkdownDocumentReader actually produces.

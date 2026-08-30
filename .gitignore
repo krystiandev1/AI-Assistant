@@ -37,3 +37,12 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local project planning / audit notes
+/TODO.md
+/PROJECT_AUDIT.md
+/audit.txt
+/STAGE1_CHANGES.md
+
+# Latency benchmark artifacts
+*latency-full.txt

@@ -35,8 +35,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *
  * Each test gets a clean DB state via @BeforeEach truncation.
  * Ollama must be available; otherwise the whole class is skipped.
- *
- * Krok 8 will add: RagRetrieval-based active-version filtering and end-to-end rollback retrieval tests.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("lifecycle-it")

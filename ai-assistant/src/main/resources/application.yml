@@ -45,9 +45,6 @@ spring:
                 WEATHER_API_URL: "https://api.weatherapi.com/v1/current.json"
 
 app:
-  timeouts:
-    countries: 5s
-    weather-mcp: 10s
   rag:
     similarity-threshold: ${RAG_SIMILARITY_THRESHOLD:0.5}
     embedding-expected-dimensions: 1024
@@ -55,12 +52,6 @@ app:
     source-url: https://www.cdq.com/products/cdq-fraud-guard
     resource-path: classpath:rag/cdq-fraud-guard.md
     startup-sync-enabled: true
-  weather:
-    api-key: ${WEATHER_API_KEY:}
-    mcp-path: ${WEATHER_MCP_PATH:./external/mcp-weather}
-  countries:
-    base-url: ${REST_COUNTRIES_BASE_URL:https://api.restcountries.com}
-    api-key: ${REST_COUNTRIES_API_KEY:}
 
 server:
   port: 8080

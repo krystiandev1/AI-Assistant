@@ -1,4 +1,4 @@
--- Stage 3: Document Lifecycle tables
+-- Document Lifecycle tables
 -- NOTE: production would use Flyway/Liquibase for schema migrations.
 -- schema.sql is additive (CREATE IF NOT EXISTS) — never drops existing data.
 
@@ -6,8 +6,7 @@ CREATE TABLE IF NOT EXISTS rag_source (
     id                BIGSERIAL     PRIMARY KEY,
     source_key        VARCHAR(255)  NOT NULL UNIQUE,
     source_url        VARCHAR(1024) NOT NULL,
-    active_version_id BIGINT        -- nullable; no FK constraint in Stage 3 (enforced by application)
-                                    -- FK to rag_source_version added via Flyway in Stage 4
+    active_version_id BIGINT        -- nullable; no DB FK (application enforces consistency)
 );
 
 CREATE TABLE IF NOT EXISTS rag_source_version (
