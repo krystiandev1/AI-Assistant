@@ -120,6 +120,11 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Run from project root so that relative paths in application.yml
+                         (file:.env, external/mcp-weather/dist/index.js) resolve correctly. -->
+                    <workingDirectory>${project.parent.basedir}</workingDirectory>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
