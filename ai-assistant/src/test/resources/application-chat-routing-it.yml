@@ -1,0 +1,18 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.mcp.client.common.autoconfigure.McpClientAutoConfiguration
+      - org.springframework.ai.mcp.client.common.autoconfigure.McpToolCallbackAutoConfiguration
+  sql:
+    init:
+      mode: always
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+
+app:
+  rag:
+    startup-sync-enabled: false   # ChatToolRoutingIT calls synchronize() explicitly in @BeforeAll

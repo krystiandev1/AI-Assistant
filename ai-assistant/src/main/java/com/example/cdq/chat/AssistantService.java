@@ -1,15 +1,10 @@
 package com.example.cdq.chat;
 
 import com.example.cdq.evidence.EvidenceAccumulator;
-import com.example.cdq.evidence.EvidenceCapturingToolCallbackProvider;
-import com.example.cdq.evidence.McpToolResultDecoder;
-import io.modelcontextprotocol.client.McpSyncClient;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,33 +15,17 @@ import java.util.UUID;
 class AssistantService {
 
     private final ChatClient chatClient;
-    private final McpToolResultDecoder toolResultDecoder;
-    private final List<McpSyncClient> mcpClients;
+    private final ToolCallbacksFactory toolCallbacksFactory;
 
-    AssistantService(
-            ChatClient chatClient,
-            McpToolResultDecoder toolResultDecoder,
-            ObjectProvider<List<McpSyncClient>> mcpClientsProvider) {
+    AssistantService(ChatClient chatClient, ToolCallbacksFactory toolCallbacksFactory) {
         this.chatClient = chatClient;
-        this.toolResultDecoder = toolResultDecoder;
-        this.mcpClients = mcpClientsProvider.stream().flatMap(List::stream).toList();
+        this.toolCallbacksFactory = toolCallbacksFactory;
     }
 
     ChatApiResponse ask(ChatRequest request) {
         String requestId = UUID.randomUUID().toString();
         EvidenceAccumulator evidence = new EvidenceAccumulator(requestId);
-
-        // Build per-server evidence-capturing wrappers for this invocation
-        Object[] tools = mcpClients.stream()
-            .map(client -> {
-                String serverName = client.getClientInfo().title();
-                SyncMcpToolCallbackProvider perServerProvider = SyncMcpToolCallbackProvider.builder()
-                    .mcpClients(client)
-                    .build();
-                return new EvidenceCapturingToolCallbackProvider(
-                    perServerProvider, serverName, evidence, toolResultDecoder);
-            })
-            .toArray();
+        Object[] tools = toolCallbacksFactory.create(evidence);
 
         ChatResponse response = chatClient.prompt()
             .user(request.question())
