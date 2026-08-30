@@ -1,11 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-
-// Patch 1: dotenv removed — Spring AI STDIO client injects env vars via process.env
-const WEATHER_API_KEY = process.env.WEATHER_API_KEY ?? "";
-const WEATHER_API_URL =
-  process.env.WEATHER_API_URL ?? "https://api.weatherapi.com/v1/current.json";
+import { handleGetWeather } from "./weather-handler.js";
 
 const server = new McpServer({
   name: "mcp-weather",
@@ -17,54 +13,7 @@ server.tool(
   // Patch 2: accurate description for tool selection
   "Get the current weather for a city. Use this tool whenever current temperature or weather conditions are requested.",
   { city: z.string().describe("The city name to get weather for, e.g. 'Berlin', 'Munich'") },
-  async ({ city }) => {
-    try {
-      const url = `${WEATHER_API_URL}?key=${encodeURIComponent(WEATHER_API_KEY)}&q=${encodeURIComponent(city)}`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        // Patch 3: structured error — parseable by McpToolResultDecoder
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              status: "ERROR",
-              errorCode: "WEATHER_PROVIDER_UNAVAILABLE",
-              message: "Current weather data could not be retrieved.",
-            }),
-          }],
-        };
-      }
-
-      const data = await response.json() as {
-        location?: { name?: string };
-        current?: { temp_c?: number };
-      };
-
-      // Patch 3: structured success — parseable by McpToolResultDecoder
-      return {
-        content: [{
-          type: "text" as const,
-          text: JSON.stringify({
-            status: "OK",
-            city: data.location?.name ?? city,
-            temperatureCelsius: data.current?.temp_c ?? null,
-          }),
-        }],
-      };
-    } catch (_err) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: JSON.stringify({
-            status: "ERROR",
-            errorCode: "WEATHER_PROVIDER_UNAVAILABLE",
-            message: "Current weather data could not be retrieved.",
-          }),
-        }],
-      };
-    }
-  }
+  handleGetWeather,
 );
 
 async function main(): Promise<void> {
