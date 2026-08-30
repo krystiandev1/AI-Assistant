@@ -27,8 +27,12 @@ class AssistantService {
         EvidenceAccumulator evidence = new EvidenceAccumulator(requestId);
         Object[] tools = toolCallbacksFactory.create(evidence);
 
+        // qwen3:4b ignores system-prompt language rules when tool schemas add English context.
+        // Prepending a language hint directly to the user message is the only reliable fix.
+        String userMessage = withLanguageHint(request.question());
+
         ChatResponse response = chatClient.prompt()
-            .user(request.question())
+            .user(userMessage)
             .tools(tools)
             .call()
             .chatResponse();
@@ -58,6 +62,32 @@ class AssistantService {
             : "";
 
         return new ChatApiResponse(requestId, answer, evidence.build());
+    }
+
+    private static final String POLISH_CHARS = "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ";
+    private static final String GERMAN_CHARS  = "äöüÄÖÜß";
+
+    private static final java.util.regex.Pattern POLISH_WORDS = java.util.regex.Pattern.compile(
+        "\\b(co|jak|jaka|jakie|jaki|czy|nie|jest|ile|gdzie|kiedy|dlaczego|wiesz|masz" +
+        "|temperatura|stolica|aktualna|aktualny|powiedz|opisz|podaj|chce|moge|mozesz)\\b",
+        java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE);
+
+    // Unambiguous German words that cannot appear in English text
+    private static final java.util.regex.Pattern GERMAN_WORDS = java.util.regex.Pattern.compile(
+        "\\b(ist|sind|haben|nicht|kannst|kannst|weißt|wissen|hauptstadt|deutschland|deutsch" +
+        "|aktuell|temperatur|kannst|bitte|erkläre|beschreibe|welche|welcher|welches)\\b",
+        java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.UNICODE_CASE);
+
+    private static String withLanguageHint(String question) {
+        if (question.chars().anyMatch(c -> POLISH_CHARS.indexOf(c) >= 0)
+                || POLISH_WORDS.matcher(question).find()) {
+            return "Odpowiedz po polsku (Polski). " + question;
+        }
+        if (question.chars().anyMatch(c -> GERMAN_CHARS.indexOf(c) >= 0)
+                || GERMAN_WORDS.matcher(question).find()) {
+            return "Antworte auf Deutsch. " + question;
+        }
+        return question;
     }
 
     private static int toInt(Object value) {
