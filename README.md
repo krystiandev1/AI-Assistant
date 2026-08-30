@@ -2,13 +2,17 @@
 
 A Spring AI–based chat assistant for CDQ Fraud Guard knowledge, built as a recruitment task submission.
 
+> **AI usage disclosure:** This project was built with the assistance of Claude Code (claude-sonnet-4-6). See [AI_USAGE.md](AI_USAGE.md) for a full explanation.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Framework | Spring Boot 4.1.1, Spring AI 2.0.1 |
 | Language | Java 21 |
-| LLM | Ollama — `qwen3:4b-instruct` (default) / `qwen3:4b` |
+| LLM | Ollama — `qwen3:4b` (task-compliant) / `qwen3:4b-instruct` (recommended) |
 | Embeddings | Ollama — `qwen3-embedding:0.6b` (1024d, fixed) |
 | Vector store | PostgreSQL + pgvector (HNSW, cosine, 1024d) |
 | RAG pipeline | Spring AI `RetrievalAugmentationAdvisor` + custom `ActiveVersionDocumentRetriever` |
@@ -20,34 +24,73 @@ A Spring AI–based chat assistant for CDQ Fraud Guard knowledge, built as a rec
 
 - Java 21+
 - Maven 3.9+ (or use the included `mvnw`)
-- Docker (Testcontainers uses it for integration tests)
+- Docker (for pgvector and Testcontainers integration tests)
 - [Ollama](https://ollama.com) installed and running locally
-- PostgreSQL with pgvector extension (or Docker — see below)
+- Node.js 18+ (required for the weather MCP server)
+- API keys — see [API Keys](#api-keys) below
 
 ---
 
 ## Model Setup
 
-Pull both models before starting the application:
+Pull the required models before starting the application:
 
 ```bash
-# Recommended default — fast interactive chat
-ollama pull qwen3:4b-instruct
-
-# Exact model specified in the recruitment task — compatibility/strict-task option
+# Task-specified model — use this to match the recruitment requirement exactly
 ollama pull qwen3:4b
 
-# Embedding model — required, unchanged
+# Recommended default — significantly faster for interactive chat
+ollama pull qwen3:4b-instruct
+
+# Embedding model — required, not configurable
 ollama pull qwen3-embedding:0.6b
 ```
 
-See [Chat Model Selection](#chat-model-selection) below for why two models are listed and which one to use.
+See [Chat Model Selection](#chat-model-selection) for the full rationale.
+
+---
+
+## API Keys
+
+The application requires two free API keys:
+
+| Service | Sign up | Purpose |
+|---|---|---|
+| REST Countries v5 | https://restcountries.com/sign-up | Country data (capital, region, population) |
+| WeatherAPI.com | https://www.weatherapi.com/signup.aspx | Current weather by city |
+
+Both are free tier with no credit card required. After signing up, create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+# then edit .env and fill in your keys
+```
+
+```
+REST_COUNTRIES_API_KEY=your_key_here
+WEATHER_API_KEY=your_key_here
+```
+
+Also create `countries-mcp-server/.env` with the countries key (the countries server reads its own working directory):
+
+```
+REST_COUNTRIES_API_KEY=your_key_here
+REST_COUNTRIES_BASE_URL=https://api.restcountries.com
+```
 
 ---
 
 ## Quick Start
 
+Start services in this order. Each step depends on the previous one.
+
 ### 1. Start PostgreSQL with pgvector
+
+```bash
+docker compose up -d postgres
+```
+
+Or with a plain `docker run`:
 
 ```bash
 docker run -d --name pgvector \
@@ -58,89 +101,135 @@ docker run -d --name pgvector \
   pgvector/pgvector:pg17
 ```
 
-### 2. Start the application (recommended — instruct model default)
+### 2. Build the weather MCP server
+
+Required once after checkout (Node.js 18+ must be installed):
 
 ```bash
-./mvnw spring-boot:run -pl ai-assistant
+cd external/mcp-weather
+npm install
+npm run build
+cd ../..
 ```
 
-This uses `qwen3:4b-instruct` by default. No environment variable needed.
+This produces `external/mcp-weather/dist/index.js`, which is launched as a subprocess by the ai-assistant at runtime.
 
-### 3. Start with the strict task model
+### 3. Start the Countries MCP server
 
-**Linux / macOS / bash:**
+In a separate terminal, from the project root:
+
 ```bash
-OLLAMA_CHAT_MODEL=qwen3:4b ./mvnw spring-boot:run -pl ai-assistant
+./mvnw spring-boot:run -pl countries-mcp-server
 ```
 
-**Windows PowerShell:**
-```powershell
-$env:OLLAMA_CHAT_MODEL = "qwen3:4b"
-.\mvnw.cmd spring-boot:run -pl ai-assistant
+Wait for: `Started CountriesMcpApplication` (typically ~2 seconds).
+
+**The ai-assistant will fail to start if this server is not running.**
+
+### 4. Build and start the AI assistant
+
+```bash
+# Build once (or after code changes)
+./mvnw -pl ai-assistant package -DskipTests
+
+# Run from the project root — the weather MCP path is relative to this directory
+java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
 ```
 
-The application is available at `http://localhost:8080`.
+Wait for: `Started AssistantApplication`. The RAG ingestion runs automatically on first startup (~5 seconds).
+
+The chat interface is available at **http://localhost:8080**.
 
 ---
 
-## Why `qwen3:4b-instruct` Is the Default
+## Chat Model Selection
 
-The recruitment task specifies `qwen3:4b`. This application fully supports that model — it can be activated without any code changes (see below). The default runtime uses `qwen3:4b-instruct` because benchmarks showed that `think=false` in the Ollama API does not suppress reasoning for `qwen3:4b` in the tested setup: output token count and latency are unchanged, and reasoning routes to `message.content` instead of `message.thinking`. The instruct variant produces dramatically fewer output tokens and correspondingly lower latency for the same workload.
+### Task-compliant: `qwen3:4b`
+
+```bash
+# Linux / macOS
+OLLAMA_CHAT_MODEL=qwen3:4b java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
+
+# Windows PowerShell
+$env:OLLAMA_CHAT_MODEL = "qwen3:4b"
+java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
+```
+
+### Recommended default: `qwen3:4b-instruct`
+
+No environment variable needed — this is the default. Benchmarks showed that `think=false` in the Ollama API does not suppress reasoning for `qwen3:4b` in the tested setup: reasoning routes to `message.content` instead of `message.thinking`, producing identical latency and token counts. The instruct variant resolves this:
 
 | Scenario | `qwen3:4b` | `qwen3:4b-instruct` |
 |---|---:|---:|
 | Simple direct chat | ~9.9 s / 604 tok | ~0.16 s / 9 tok |
 | CDQ question, no context | ~15.8 s / 1 004 tok | ~0.66 s / 37 tok |
 | CDQ + simulated RAG | ~8.8 s / 550 tok | ~1.18 s / 67 tok |
-| EN/PL grounding | working | working |
-| DE cross-lingual grounding | working | partial — instruct may decline |
-| Tool calling | supported | supported |
 
-_Results are environment-specific. Measured via direct Ollama HTTP, WARM_RUNS=3._
+Full rationale: [`docs/why-ollama-instant.md`](docs/why-ollama-instant.md).
 
-To run the exact task model:
+---
 
-```bash
-# Linux / macOS
-OLLAMA_CHAT_MODEL=qwen3:4b ./mvnw spring-boot:run -pl ai-assistant
+## Sample Questions & Answers
 
-# Windows PowerShell
-$env:OLLAMA_CHAT_MODEL = "qwen3:4b"
-.\mvnw.cmd spring-boot:run -pl ai-assistant
-```
+The following responses were recorded from a live run with `qwen3:4b-instruct`.
 
-Full engineering rationale, benchmark methodology, `think=false` analysis, community reports, and known trade-offs: [`docs/why-ollama-instant.md`](docs/why-ollama-instant.md).
+### Q1 — What is the capital city of Germany?
 
-### Model Configuration
+> The capital city of Germany is Berlin.
 
-The model is configured in `ai-assistant/src/main/resources/application.yml`:
+**Routing:** `get_country("Germany")` → capital field from REST Countries API.
 
-```yaml
-spring:
-  ai:
-    ollama:
-      chat:
-        model: ${OLLAMA_CHAT_MODEL:qwen3:4b-instruct}
-```
+---
 
-The embedding model is fixed and not configurable at runtime:
+### Q2 — What is the temperature currently in Munich?
 
-```yaml
-      embedding:
-        model: qwen3-embedding:0.6b
-```
+> The current temperature in Munich is 18.9°C.
+
+**Routing:** `get_weather("Munich")` → WeatherAPI.com.
+
+---
+
+### Q3 — What is the temperature of the capital of Germany currently?
+
+> The current temperature in the capital of Germany, Berlin, is 20.3°C.
+
+**Routing:** `get_country("Germany")` → capital = "Berlin" → `get_weather("Berlin")`. Multi-tool chain: two MCP calls in sequence.
+
+---
+
+### Q4 — What do you know about Berlin?
+
+> Berlin is the capital city of Germany. It is located in the central part of the country and is one of the most populous cities in Europe. Berlin is known for its rich history, cultural diversity, and vibrant arts and music scene. It is also a major center for technology, innovation, and research.
+
+**Routing:** No tool calls, no RAG documents. The question is open-ended and non-time-sensitive — the system prompt allows model knowledge for broad city questions. This is intentional behaviour.
+
+---
+
+### Own questions
+
+**"How does CDQ Fraud Guard reduce manual work?"**
+
+> CDQ Fraud Guard reduces manual work by automating repetitive data-lookup and cross-referencing tasks for finance and risk teams. It leverages community-shared data and real-time fraud intelligence to eliminate the need for manual verification of bank accounts and transaction partners.
+
+**Routing:** RAG — retrieved from local CDQ Fraud Guard knowledge base (no MCP tools).
+
+**"What is the population of France, and what is the weather in its capital?"**
+
+> France has a population of approximately 67,391,582. The current weather in Paris, the capital of France, is 22.1°C.
+
+**Routing:** `get_country("France")` → population + capital = "Paris" → `get_weather("Paris")`.
 
 ---
 
 ## Running Tests
 
-### Unit tests only (fast, no external dependencies)
+### Unit tests (fast, no external dependencies)
 
 ```bash
 ./mvnw test -pl ai-assistant
 ```
 
-All tests should pass in ~5 seconds.
+All 51 tests pass in ~5 seconds.
 
 ### Integration tests (requires Docker + Ollama)
 
@@ -148,7 +237,7 @@ All tests should pass in ~5 seconds.
 ./mvnw verify -Pintegration -pl ai-assistant
 ```
 
-Integration tests use Testcontainers (pgvector auto-started via Docker). Ollama must be running. All tests should pass; total time is ~2–5 minutes depending on model load time.
+Testcontainers starts pgvector automatically. Ollama must be running. Total time ~2–5 minutes.
 
 ### Run a specific integration test class
 
@@ -157,66 +246,43 @@ Integration tests use Testcontainers (pgvector auto-started via Docker). Ollama 
   -Dit.test=ChatRagIT
 ```
 
-### Performance benchmarks (manual, opt-in)
-
-Benchmark tests are guarded by environment variables and are excluded from normal `mvn verify` runs:
+### Performance benchmarks (opt-in)
 
 ```bash
-# Full pipeline benchmark (requires Ollama, Docker)
+# Full pipeline benchmark
 RUN_FULL_BENCH=true ./mvnw failsafe:integration-test -Pintegration \
   -pl ai-assistant -Dit.test=FullPipelineBenchmarkIT
 
-# Run with qwen3:4b for comparison
-RUN_FULL_BENCH=true OLLAMA_CHAT_MODEL=qwen3:4b ./mvnw failsafe:integration-test \
-  -Pintegration -pl ai-assistant -Dit.test=FullPipelineBenchmarkIT
-
-# Model comparison (direct Ollama, both models)
+# Model comparison (qwen3:4b vs qwen3:4b-instruct)
 RUN_LATENCY=true ./mvnw failsafe:integration-test -Pintegration \
   -pl ai-assistant -Dit.test=ChatModelBenchmarkIT
-
-# Latency breakdown (direct Ollama vs Spring AI overhead)
-RUN_LATENCY=true ./mvnw failsafe:integration-test -Pintegration \
-  -pl ai-assistant -Dit.test=ChatLatencyIT
 ```
 
-Reports are written to `ai-assistant/target/`:
-- `full-pipeline-report.txt`
-- `model-comparison-report.txt`
-
-See [`docs/model-performance.md`](docs/model-performance.md) for the full investigation and result interpretation.
+Reports: `ai-assistant/target/full-pipeline-report.txt`, `model-comparison-report.txt`.
+See [`docs/model-performance.md`](docs/model-performance.md).
 
 ---
 
 ## Project Structure
 
 ```
-demo1/
-├── ai-assistant/          # Main Spring Boot application (port 8080)
+.
+├── ai-assistant/               # Main Spring Boot application (port 8080)
 │   └── src/
-│       ├── main/
-│       │   └── java/com/example/cdq/
-│       │       ├── chat/               # AssistantService, ChatController
-│       │       ├── config/             # ChatConfig, AppProperties
-│       │       ├── evidence/           # RagEvidence, EvidenceAccumulator
-│       │       ├── rag/                # DocumentProcessor, RagRetrieval
-│       │       │   └── lifecycle/      # DocumentLifecycleService, version state machine
-│       │       └── embedding/          # CosineSimilarity utilities
-│       └── test/
-│           └── java/com/example/cdq/
-│               └── chat/
-│                   ├── ChatRagIT.java              # E2E RAG quality tests (15)
-│                   ├── ChatVersionIT.java          # Active-version switching tests (3)
-│                   ├── FullPipelineBenchmarkIT.java # Performance benchmark (guard: RUN_FULL_BENCH)
-│                   ├── ChatModelBenchmarkIT.java   # Model comparison (guard: RUN_LATENCY)
-│                   └── ChatLatencyIT.java          # Latency breakdown (guard: RUN_LATENCY)
-├── countries-mcp-server/  # Spring AI MCP server for REST Countries API (port 8081)
+│       ├── main/java/com/example/cdq/
+│       │   ├── chat/           # AssistantService, ChatController, ChatUiController
+│       │   ├── config/         # ChatConfig, AppProperties
+│       │   ├── evidence/       # EvidenceAccumulator, RagEvidence, ToolCallEvidence
+│       │   └── rag/            # DocumentProcessor, RagRetrieval, lifecycle/
+│       └── test/java/com/example/cdq/
+│           └── chat/           # ChatRagIT, ChatVersionIT, benchmarks
+├── countries-mcp-server/       # Spring AI MCP server — REST Countries v5 (port 8081)
 ├── external/
-│   └── mcp-weather/       # Node.js MCP server for weather (stdio)
-└── docs/
-    ├── model-performance.md    # Full performance investigation
-    ├── embedding-model.md
-    ├── rag-ingestion-pipeline.md
-    └── rag-document-lifecycle.md
+│   └── mcp-weather/            # Node.js MCP server — WeatherAPI.com (stdio)
+├── docs/                       # Engineering decision records
+├── docker-compose.yml
+├── .env.example
+└── AI_USAGE.md
 ```
 
 ---
@@ -225,11 +291,21 @@ demo1/
 
 | Variable | Default | Description |
 |---|---|---|
-| `OLLAMA_CHAT_MODEL` | `qwen3:4b-instruct` | Chat LLM model name |
+| `OLLAMA_CHAT_MODEL` | `qwen3:4b-instruct` | Chat model name |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `POSTGRES_DB` | `cdq_assistant` | Database name |
 | `POSTGRES_USER` | `cdq` | Database user |
 | `POSTGRES_PASSWORD` | `cdq_secret` | Database password |
 | `RAG_SIMILARITY_THRESHOLD` | `0.5` | Minimum cosine similarity for retrieval |
-| `WEATHER_API_KEY` | _(empty)_ | WeatherAPI.com key for weather MCP |
-| `REST_COUNTRIES_API_KEY` | _(empty)_ | REST Countries API key |
+| `REST_COUNTRIES_API_KEY` | _(empty)_ | REST Countries v5 API key |
+| `WEATHER_API_KEY` | _(empty)_ | WeatherAPI.com free tier key |
+
+---
+
+## Known Limitations
+
+- **No conversation memory.** Each question is an independent request. Long-term and short-term memory are explicitly out of scope per the task definition.
+- **CDQ content is a local file.** The RAG knowledge base (`rag/cdq-fraud-guard.md`) was manually scraped from `https://www.cdq.com/products/cdq-fraud-guard` and committed as a local Markdown file. The pipeline does not fetch from the live URL at runtime. This was a deliberate choice: reproducibility and offline operation take priority over live content staleness. The source URL is stored as provenance metadata on every embedded chunk.
+- **Model default deviates from task.** The task specifies `qwen3:4b`; the default is `qwen3:4b-instruct`. The rationale is benchmarked and documented. The task-compliant model is fully supported via `OLLAMA_CHAT_MODEL=qwen3:4b`.
+- **Weather MCP requires Node.js.** The weather MCP server is a Node.js/TypeScript process. Node.js 18+ must be installed and `npm run build` must be executed once before starting the application.
+- **API keys required.** REST Countries v5 and WeatherAPI.com both require free registration. Without keys, country and weather tool calls return errors.
