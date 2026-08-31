@@ -118,6 +118,10 @@ class ChatToolRoutingIT {
         int countryIdx = firstIndexOfTool(r.evidence(), "get_country");
         int weatherIdx = firstIndexOfTool(r.evidence(), "get-weather");
         assertThat(countryIdx).isLessThan(weatherIdx);
+
+        // Data propagation: Germany → get_country → capital=Berlin → get-weather("Berlin")
+        assertToolArgContains(r.evidence(), "get_country", "Germany");
+        assertToolArgContains(r.evidence(), "get-weather", "Berlin");
     }
 
     // ── 4. General city question → model knowledge only ──────────────────────
