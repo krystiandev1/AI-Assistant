@@ -2,8 +2,8 @@
 
 > A local-first AI assistant combining semantic product knowledge (RAG), real-time external data (MCP tool calling), and multi-tool orchestration — built with Spring AI, Ollama, and pgvector.
 
-**Stack:** Java 21 · Spring Boot 4.1.1 · Spring AI 2.0.1 · Ollama `qwen3:4b` · pgvector · MCP
-qq
+![Java](https://img.shields.io/badge/Java-21-orange?style=flat-square&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?style=flat-square&logo=springboot&logoColor=white) ![Spring AI](https://img.shields.io/badge/Spring%20AI-2.0.1-6DB33F?style=flat-square&logo=spring&logoColor=white) ![Ollama](https://img.shields.io/badge/Ollama-qwen3%3A4b--instruct-black?style=flat-square) ![pgvector](https://img.shields.io/badge/pgvector-pg17-336791?style=flat-square&logo=postgresql&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-countries%20%2B%20weather-7C3AED?style=flat-square)
+
 [Architecture](#architecture) · [Quick Start](#quick-start) · [Tests](#tests) · [Docs](#documentation)
 
 ---
