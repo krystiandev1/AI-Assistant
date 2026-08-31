@@ -1,0 +1,29 @@
+# End-to-end profile — MCP autoconfiguration is NOT excluded.
+#
+# Prerequisites (all must be running when RUN_E2E=true):
+#   • Ollama (localhost:11434) with qwen3:4b + qwen3-embedding:0.6b
+#   • countries-mcp-server at localhost:8081
+#   • node.js in PATH  (weather STDIO process)
+#   • WEATHER_API_KEY env var (for weather + multi-step tests only)
+#
+# Failsafe is configured with workingDirectory=${project.parent.basedir}, so
+# STDIO paths resolve from the project root — same as application.yml.
+spring:
+  sql:
+    init:
+      mode: always
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+    mcp:
+      client:
+        stdio:
+          connections:
+            weather:
+              args:
+                - "external/mcp-weather/dist/index.js"
+
+app:
+  rag:
+    startup-sync-enabled: false
