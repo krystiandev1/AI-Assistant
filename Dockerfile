@@ -37,7 +37,7 @@ COPY --from=node-builder /weather/node_modules /app/external/mcp-weather/node_mo
 COPY external/mcp-weather/dist /app/external/mcp-weather/dist
 
 COPY ai-assistant-entrypoint.sh /ai-assistant-entrypoint.sh
-RUN chmod +x /ai-assistant-entrypoint.sh
+RUN sed -i 's/\r$//' /ai-assistant-entrypoint.sh && chmod +x /ai-assistant-entrypoint.sh
 
 EXPOSE 8080
 
