@@ -259,23 +259,47 @@ HTTP 400 Bad Request
 <details>
 <summary>Sample responses (recorded live, qwen3:4b-instruct)</summary>
 
+#### English
+
 **Capital of Germany**
 > The capital city of Germany is Berlin.
 
 **Temperature in Munich**
 > The current temperature in Munich is 18.9°C.
 
-**Temperature in capital of Germany** — two MCP calls in sequence
+**Temperature in the capital of Germany** — two MCP calls in sequence
 > The current temperature in the capital of Germany, Berlin, is 20.3°C.
-
-**What do you know about Berlin?** — model knowledge, no tools, no RAG
-> Berlin is the capital city of Germany, one of the most populous cities in Europe, known for its rich history, cultural diversity, and vibrant arts scene.
 
 **How does CDQ Fraud Guard reduce manual work?** — RAG only
 > CDQ Fraud Guard reduces manual work by automating repetitive data-lookup and cross-referencing tasks for finance and risk teams. It leverages community-shared data and real-time fraud intelligence to eliminate the need for manual verification of bank accounts and transaction partners.
 
 **Population of France and weather in its capital** — Countries (population + capital) → Weather
 > France has a population of approximately 67,391,582. The current weather in Paris, the capital of France, is 22.1°C.
+
+#### Polish
+
+**Jakie jest miasto stołeczne Niemiec?**
+> Stolicą Niemiec jest Berlin.
+
+**Jaka jest temperatura w Monachium?** — `"Monachium"` mapped to `"Munich"` before tool call
+> Aktualna temperatura w Monachium wynosi 18,9°C.
+
+**Jaka jest temperatura w stolicy Niemiec?** — tool chaining: Countries → Berlin → Weather
+> Aktualna temperatura w Berlinie, stolicy Niemiec, wynosi 20,3°C.
+
+**W jaki sposób CDQ Fraud Guard weryfikuje konta bankowe?** — RAG cross-lingual: Polish query → English chunks → Polish response
+> CDQ Fraud Guard weryfikuje konta bankowe poprzez automatyzację powtarzalnych zadań wyszukiwania i weryfikacji danych dla zespołów finansowych i zarządzania ryzykiem. System wykorzystuje dane udostępniane przez społeczność oraz wywiad dotyczący oszustw w czasie rzeczywistym, eliminując potrzebę ręcznej weryfikacji kont bankowych i partnerów transakcyjnych.
+
+#### German
+
+**Was ist die Hauptstadt von Deutschland?**
+> Die Hauptstadt von Deutschland ist Berlin.
+
+**Wie ist das Wetter in München?**
+> Die aktuelle Temperatur in München beträgt 18,9°C.
+
+**Wie ist das Wetter in der Hauptstadt von Deutschland?** — tool chaining: Countries → Berlin → Weather
+> Die aktuelle Temperatur in Berlin, der Hauptstadt von Deutschland, beträgt 20,3°C.
 
 > Weather readings are dynamic — temperatures above were recorded at the time of the live run.
 
