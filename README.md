@@ -27,7 +27,7 @@
 
 ## Demo
 
-<video src="docs/assets/demo.mp4" autoplay loop muted playsinline></video>
+<video src="https://github.com/user-attachments/assets/b09a9411-f91c-4c2c-8631-838432e87137" autoplay loop muted playsinline></video>
 
 ---
 
