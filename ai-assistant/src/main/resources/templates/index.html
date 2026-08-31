@@ -285,6 +285,37 @@
             color: #999;
         }
 
+        /* Language tab bar inside examples panel */
+        .lang-tab-bar {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 6px;
+        }
+
+        .lang-tab-btn {
+            padding: 3px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            background: #f5f5f5;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #777;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.12s, color 0.12s, border-color 0.12s;
+        }
+
+        .lang-tab-btn.active {
+            background: #1a1a2e;
+            color: #fff;
+            border-color: #1a1a2e;
+        }
+
+        .lang-tab-btn:hover:not(.active) {
+            background: #e8e8f0;
+            color: #1a1a2e;
+        }
+
         .examples-scroll {
             flex: 1;
             min-height: 0;
@@ -338,6 +369,9 @@
             background: #ededf5;
             color: #1a1a2e;
         }
+
+        .lang-examples { display: none; }
+        .lang-examples.active { display: block; }
 
         #empty-state {
             text-align: center;
@@ -575,32 +609,115 @@
                 <button class="btn btn-secondary" onclick="clearChat()">Clear chat</button>
             </div>
 
+            <div class="lang-tab-bar">
+                <button class="lang-tab-btn active" id="lang-en" onclick="switchLang('en')">🇬🇧 English</button>
+                <button class="lang-tab-btn" id="lang-pl" onclick="switchLang('pl')">🇵🇱 Polski</button>
+                <button class="lang-tab-btn" id="lang-de" onclick="switchLang('de')">🇩🇪 Deutsch</button>
+            </div>
+
             <div class="examples-scroll">
 
-                <div class="examples-group-head head-country">Country — get_country</div>
-                <button class="example-item" onclick="fillExample('What is the capital city of Germany?')">What is the capital city of Germany?</button>
+                <!-- ── English ── -->
+                <div class="lang-examples active" id="examples-en">
+                    <div class="examples-group-head head-country">Country — get_country</div>
+                    <button class="example-item" onclick="fillExample('What is the capital city of Germany?')">What is the capital city of Germany?</button>
+                    <button class="example-item" onclick="fillExample('What is the population of France?')">What is the population of France?</button>
 
-                <div class="examples-divider"></div>
+                    <div class="examples-divider"></div>
 
-                <div class="examples-group-head head-weather">Weather — get-weather</div>
-                <button class="example-item" onclick="fillExample('What is the temperature currently in Munich?')">What is the temperature currently in Munich?</button>
-                <button class="example-item" onclick="fillExample('What is the temperature of the capital of Germany currently?')">What is the temperature of the capital of Germany currently?</button>
+                    <div class="examples-group-head head-weather">Weather — get-weather</div>
+                    <button class="example-item" onclick="fillExample('What is the temperature currently in Munich?')">What is the temperature currently in Munich?</button>
+                    <button class="example-item" onclick="fillExample('What is the temperature of the capital of Germany currently?')">What is the temperature of the capital of Germany currently?</button>
+                    <button class="example-item" onclick="fillExample('What is the current temperature in the capital of France?')">What is the current temperature in the capital of France? ★</button>
+                    <button class="example-item" onclick="fillExample('Is it colder in Warsaw or in Berlin right now?')">Is it colder in Warsaw or in Berlin right now? ★</button>
 
-                <div class="examples-divider"></div>
+                    <div class="examples-divider"></div>
 
-                <div class="examples-group-head head-rag">CDQ Fraud Guard — Knowledge Base (RAG)</div>
-                <button class="example-item" onclick="fillExample('How does CDQ Fraud Guard reduce manual work?')">How does CDQ Fraud Guard reduce manual work?</button>
-                <button class="example-item" onclick="fillExample('What is the Trust Score in CDQ Fraud Guard?')">What is the Trust Score in CDQ Fraud Guard?</button>
+                    <div class="examples-group-head head-rag">CDQ Fraud Guard — Knowledge Base (RAG)</div>
+                    <button class="example-item" onclick="fillExample('How does CDQ Fraud Guard reduce manual work?')">How does CDQ Fraud Guard reduce manual work?</button>
+                    <button class="example-item" onclick="fillExample('What is the Trust Score in CDQ Fraud Guard?')">What is the Trust Score in CDQ Fraud Guard?</button>
+                    <button class="example-item" onclick="fillExample('How does CDQ Fraud Guard verify bank account ownership?')">How does CDQ Fraud Guard verify bank account ownership? ★</button>
+                    <button class="example-item" onclick="fillExample('Can CDQ Fraud Guard integrate with existing financial systems?')">Can CDQ Fraud Guard integrate with existing financial systems? ★</button>
 
-                <div class="examples-divider"></div>
+                    <div class="examples-divider"></div>
 
-                <div class="examples-group-head head-model">General Knowledge — LLM model</div>
-                <button class="example-item" onclick="fillExample('What do you know about Berlin?')">What do you know about Berlin?</button>
+                    <div class="examples-group-head head-model">General Knowledge — LLM model</div>
+                    <button class="example-item" onclick="fillExample('What do you know about Berlin?')">What do you know about Berlin?</button>
 
-                <div class="examples-divider"></div>
+                    <div class="examples-divider"></div>
 
-                <div class="examples-group-head head-mixed">Combined — RAG + MCP</div>
-                <button class="example-item" onclick="fillExample('How does CDQ Fraud Guard reduce manual work and what is temperature in german capital currently?')">How does CDQ Fraud Guard reduce manual work and what is temperature in german capital currently?</button>
+                    <div class="examples-group-head head-mixed">Combined — RAG + MCP (chained calls) ★</div>
+                    <button class="example-item" onclick="fillExample('How does CDQ Fraud Guard reduce manual work and what is temperature in german capital currently?')">How does CDQ Fraud Guard reduce manual work and what is temperature in german capital currently?</button>
+                    <button class="example-item" onclick="fillExample('What fraud protection does CDQ offer and what is the weather in the capital of Japan right now?')">What fraud protection does CDQ offer and what is the weather in the capital of Japan right now? ★</button>
+                </div>
+
+                <!-- ── Polski ── -->
+                <div class="lang-examples" id="examples-pl">
+                    <div class="examples-group-head head-country">Kraj — get_country</div>
+                    <button class="example-item" onclick="fillExample('Jakie jest stoliczne miasto Niemiec?')">Jakie jest stoliczne miasto Niemiec?</button>
+                    <button class="example-item" onclick="fillExample('Jaka jest populacja Francji?')">Jaka jest populacja Francji? ★</button>
+
+                    <div class="examples-divider"></div>
+
+                    <div class="examples-group-head head-weather">Pogoda — get-weather</div>
+                    <button class="example-item" onclick="fillExample('Jaka jest aktualna temperatura w Monachium?')">Jaka jest aktualna temperatura w Monachium?</button>
+                    <button class="example-item" onclick="fillExample('Jaka jest aktualna temperatura w stolicy Niemiec?')">Jaka jest aktualna temperatura w stolicy Niemiec?</button>
+                    <button class="example-item" onclick="fillExample('Jaka jest aktualna temperatura w stolicy Francji?')">Jaka jest aktualna temperatura w stolicy Francji? ★</button>
+                    <button class="example-item" onclick="fillExample('Czy jest teraz zimniej w Warszawie czy w Berlinie?')">Czy jest teraz zimniej w Warszawie czy w Berlinie? ★</button>
+
+                    <div class="examples-divider"></div>
+
+                    <div class="examples-group-head head-rag">CDQ Fraud Guard — Baza Wiedzy (RAG)</div>
+                    <button class="example-item" onclick="fillExample('W jaki sposób CDQ Fraud Guard redukuje pracę manualną?')">W jaki sposób CDQ Fraud Guard redukuje pracę manualną?</button>
+                    <button class="example-item" onclick="fillExample('Czym jest Trust Score w CDQ Fraud Guard?')">Czym jest Trust Score w CDQ Fraud Guard?</button>
+                    <button class="example-item" onclick="fillExample('Jak CDQ Fraud Guard weryfikuje własność konta bankowego?')">Jak CDQ Fraud Guard weryfikuje własność konta bankowego? ★</button>
+                    <button class="example-item" onclick="fillExample('Czy CDQ Fraud Guard można zintegrować z istniejącymi systemami finansowymi?')">Czy CDQ Fraud Guard można zintegrować z istniejącymi systemami finansowymi? ★</button>
+
+                    <div class="examples-divider"></div>
+
+                    <div class="examples-group-head head-model">Wiedza ogólna — model LLM</div>
+                    <button class="example-item" onclick="fillExample('Co wiesz o Berlinie?')">Co wiesz o Berlinie?</button>
+
+                    <div class="examples-divider"></div>
+
+                    <div class="examples-group-head head-mixed">Łączone — RAG + MCP (łańcuch wywołań) ★</div>
+                    <button class="example-item" onclick="fillExample('W jaki sposób CDQ Fraud Guard redukuje pracę manualną i jaka jest teraz temperatura w stolicy Niemiec?')">W jaki sposób CDQ Fraud Guard redukuje pracę manualną i jaka jest teraz temperatura w stolicy Niemiec?</button>
+                    <button class="example-item" onclick="fillExample('Co CDQ oferuje w zakresie ochrony przed oszustwami i jaka jest teraz pogoda w stolicy Japonii?')">Co CDQ oferuje w zakresie ochrony przed oszustwami i jaka jest teraz pogoda w stolicy Japonii? ★</button>
+                </div>
+
+                <!-- ── Deutsch ── -->
+                <div class="lang-examples" id="examples-de">
+                    <div class="examples-group-head head-country">Land — get_country</div>
+                    <button class="example-item" onclick="fillExample('Was ist die Hauptstadt Deutschlands?')">Was ist die Hauptstadt Deutschlands?</button>
+                    <button class="example-item" onclick="fillExample('Wie groß ist die Bevölkerung Frankreichs?')">Wie groß ist die Bevölkerung Frankreichs? ★</button>
+
+                    <div class="examples-divider"></div>
+
+                    <div class="examples-group-head head-weather">Wetter — get-weather</div>
+                    <button class="example-item" onclick="fillExample('Wie hoch ist die aktuelle Temperatur in München?')">Wie hoch ist die aktuelle Temperatur in München?</button>
+                    <button class="example-item" onclick="fillExample('Wie hoch ist die aktuelle Temperatur in der Hauptstadt Deutschlands?')">Wie hoch ist die aktuelle Temperatur in der Hauptstadt Deutschlands?</button>
+                    <button class="example-item" onclick="fillExample('Wie hoch ist die aktuelle Temperatur in der Hauptstadt Frankreichs?')">Wie hoch ist die aktuelle Temperatur in der Hauptstadt Frankreichs? ★</button>
+                    <button class="example-item" onclick="fillExample('Ist es gerade kälter in Warschau oder in Berlin?')">Ist es gerade kälter in Warschau oder in Berlin? ★</button>
+
+                    <div class="examples-divider"></div>
+
+                    <div class="examples-group-head head-rag">CDQ Fraud Guard — Wissensdatenbank (RAG)</div>
+                    <button class="example-item" onclick="fillExample('Wie reduziert CDQ Fraud Guard den manuellen Aufwand?')">Wie reduziert CDQ Fraud Guard den manuellen Aufwand?</button>
+                    <button class="example-item" onclick="fillExample('Was ist der Trust Score in CDQ Fraud Guard?')">Was ist der Trust Score in CDQ Fraud Guard?</button>
+                    <button class="example-item" onclick="fillExample('Wie verifiziert CDQ Fraud Guard die Kontoinhaber von Bankkonten?')">Wie verifiziert CDQ Fraud Guard die Kontoinhaber von Bankkonten? ★</button>
+                    <button class="example-item" onclick="fillExample('Lässt sich CDQ Fraud Guard in bestehende Finanzsysteme integrieren?')">Lässt sich CDQ Fraud Guard in bestehende Finanzsysteme integrieren? ★</button>
+
+                    <div class="examples-divider"></div>
+
+                    <div class="examples-group-head head-model">Allgemeines Wissen — LLM-Modell</div>
+                    <button class="example-item" onclick="fillExample('Was weißt du über Berlin?')">Was weißt du über Berlin?</button>
+
+                    <div class="examples-divider"></div>
+
+                    <div class="examples-group-head head-mixed">Kombiniert — RAG + MCP (verkettete Aufrufe) ★</div>
+                    <button class="example-item" onclick="fillExample('Wie reduziert CDQ Fraud Guard den manuellen Aufwand und wie hoch ist die aktuelle Temperatur in der deutschen Hauptstadt?')">Wie reduziert CDQ Fraud Guard den manuellen Aufwand und wie hoch ist die aktuelle Temperatur in der deutschen Hauptstadt?</button>
+                    <button class="example-item" onclick="fillExample('Was bietet CDQ zum Schutz vor Betrug und wie ist das Wetter gerade in der Hauptstadt Japans?')">Was bietet CDQ zum Schutz vor Betrug und wie ist das Wetter gerade in der Hauptstadt Japans? ★</button>
+                </div>
 
             </div>
         </div>
@@ -805,6 +922,13 @@
         input.focus();
         input.style.height = 'auto';
         input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+    }
+
+    function switchLang(lang) {
+        ['en', 'pl', 'de'].forEach(l => {
+            document.getElementById('lang-' + l).classList.toggle('active', l === lang);
+            document.getElementById('examples-' + l).classList.toggle('active', l === lang);
+        });
     }
 
     function clearChat() {

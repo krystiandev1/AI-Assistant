@@ -1,0 +1,23 @@
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk AS builder
+WORKDIR /build
+
+COPY .mvn .mvn
+COPY mvnw mvnw
+COPY pom.xml pom.xml
+COPY ai-assistant/pom.xml ai-assistant/pom.xml
+COPY countries-mcp-server/pom.xml countries-mcp-server/pom.xml
+
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -pl countries-mcp-server -am -q
+
+COPY countries-mcp-server/src countries-mcp-server/src
+
+RUN ./mvnw package -pl countries-mcp-server -am -DskipTests -q
+
+# Stage 2: Runtime
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=builder /build/countries-mcp-server/target/countries-mcp-server-*.jar app.jar
+
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

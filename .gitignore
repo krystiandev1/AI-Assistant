@@ -46,3 +46,12 @@ build/
 
 # Latency benchmark artifacts
 *latency-full.txt
+
+# Runtime logs
+*.log
+*-err.log
+
+# Scratch / audit notes
+/audit2.txt
+/audit3.txt
+/commitnames.txt
