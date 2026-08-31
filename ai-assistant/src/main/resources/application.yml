@@ -32,14 +32,14 @@ spring:
         streamable-http:
           connections:
             countries:
-              url: http://localhost:8081
+              url: ${COUNTRIES_MCP_URL:http://localhost:8081}
               endpoint: /mcp
         stdio:
           connections:
             weather:
               command: "node"
               args:
-                - "external/mcp-weather/dist/index.js"
+                - "${WEATHER_MCP_SCRIPT:external/mcp-weather/dist/index.js}"
               env:
                 WEATHER_API_KEY: "${WEATHER_API_KEY:}"
                 WEATHER_API_URL: "https://api.weatherapi.com/v1/current.json"
@@ -54,7 +54,7 @@ app:
     startup-sync-enabled: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 logging:
   level:
