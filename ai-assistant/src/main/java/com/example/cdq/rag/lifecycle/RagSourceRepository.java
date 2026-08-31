@@ -54,6 +54,6 @@ public class RagSourceRepository {
             "SELECT active_version_id FROM rag_source WHERE source_key = ?",
             (rs, i) -> rs.getObject("active_version_id", Long.class),
             sourceKey);
-        return rows.stream().findFirst().orElse(null);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 }
