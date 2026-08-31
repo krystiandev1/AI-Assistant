@@ -17,6 +17,7 @@ A Spring AI–based chat assistant for CDQ Fraud Guard knowledge, built as a rec
 | Vector store | PostgreSQL + pgvector (HNSW, cosine, 1024d) |
 | RAG pipeline | Spring AI `RetrievalAugmentationAdvisor` + custom `ActiveVersionDocumentRetriever` |
 | MCP tools | Countries REST MCP server (port 8081) + Weather MCP (Node.js stdio) |
+| Language detection | [Lingua](https://github.com/pemistahl/lingua-rs) 1.2.2 — statistical n-gram model |
 
 ---
 
@@ -234,6 +235,27 @@ The following responses were recorded from a live run with `qwen3:4b-instruct`.
 
 ---
 
+## Language Support
+
+The assistant responds in the same language the user writes in. Supported languages:
+
+| Language | Detection method |
+|---|---|
+| **English** | Default; Lingua model |
+| **German** | German umlauts (`ä ö ü ß`), Lingua model, or German-only function words (`ist`, `sind`, `nicht`) |
+| **Polish** | Polish diacritics (`ą ć ę ł ń ó ś ź ż`), Lingua model, or Polish-only function words (`co`, `czy`, `jak` …) |
+
+Questions in any **other language** (French, Czech, Icelandic, …) receive a trilingual error
+message in English, German, and Polish explaining the supported languages. The LLM is not called.
+
+Tool arguments are always passed in English regardless of the question language — the language
+hint explicitly instructs the model to translate city names, country names, etc. before calling
+a tool.
+
+Full design rationale: [`docs/language-detection.md`](docs/language-detection.md)
+
+---
+
 ## Running Tests
 
 ### Unit tests (fast, no external dependencies)
@@ -241,8 +263,6 @@ The following responses were recorded from a live run with `qwen3:4b-instruct`.
 ```bash
 ./mvnw test -pl ai-assistant
 ```
-
-All 51 tests pass in ~5 seconds.
 
 ### Integration tests (requires Docker + Ollama)
 
@@ -252,11 +272,21 @@ All 51 tests pass in ~5 seconds.
 
 Testcontainers starts pgvector automatically. Ollama must be running. Total time ~2–5 minutes.
 
+Covers three test suites:
+
+| Suite | What it tests |
+|---|---|
+| `ChatToolRoutingIT` | LLM routes to the correct knowledge source (model / RAG / tool) |
+| `ChatMultiLanguageIT` | Responses mirror the input language across all routing paths (fake tools) |
+| `ChatEndToEndIT` | Full E2E: real Ollama + real MCP tools + real weather API (15 tests) |
+
+`ChatEndToEndIT` additionally requires the countries MCP server running and `WEATHER_API_KEY`
+in the root `.env`.
+
 ### Run a specific integration test class
 
 ```bash
-./mvnw failsafe:integration-test -Pintegration -pl ai-assistant \
-  -Dit.test=ChatRagIT
+./mvnw verify -Pintegration -pl ai-assistant -Dit.test=ChatEndToEndIT
 ```
 
 ### Performance benchmarks (opt-in)
@@ -283,12 +313,13 @@ See [`docs/model-performance.md`](docs/model-performance.md).
 ├── ai-assistant/               # Main Spring Boot application (port 8080)
 │   └── src/
 │       ├── main/java/com/example/cdq/
-│       │   ├── chat/           # AssistantService, ChatController, ChatUiController
-│       │   ├── config/         # ChatConfig, AppProperties
+│       │   ├── chat/           # AssistantService, InputLanguageDetector, ChatController
+│       │   ├── config/         # ChatConfig, LanguageHintAdvisor, AppProperties
 │       │   ├── evidence/       # EvidenceAccumulator, RagEvidence, ToolCallEvidence
 │       │   └── rag/            # DocumentProcessor, RagRetrieval, lifecycle/
 │       └── test/java/com/example/cdq/
-│           └── chat/           # ChatRagIT, ChatVersionIT, benchmarks
+│           └── chat/           # AbstractChatIT, ChatEndToEndIT, ChatMultiLanguageIT,
+│                               # ChatToolRoutingIT, InputLanguageDetectorTest
 ├── countries-mcp-server/       # Spring AI MCP server — REST Countries v5 (port 8081)
 ├── external/
 │   └── mcp-weather/            # Node.js MCP server — WeatherAPI.com (stdio)
@@ -311,6 +342,9 @@ See [`docs/model-performance.md`](docs/model-performance.md).
 | `POSTGRES_PASSWORD` | `cdq_secret` | Database password |
 | `RAG_SIMILARITY_THRESHOLD` | `0.5` | Minimum cosine similarity for retrieval |
 | `WEATHER_API_KEY` | _(empty)_ | WeatherAPI.com free tier key |
+| `COUNTRIES_MCP_URL` | `http://localhost:8081` | Countries MCP server base URL |
+| `WEATHER_MCP_SCRIPT` | `external/mcp-weather/dist/index.js` | Path to the weather MCP Node.js script |
+| `PORT` | `8080` | HTTP port for the AI assistant |
 
 ---
 
@@ -321,3 +355,4 @@ See [`docs/model-performance.md`](docs/model-performance.md).
 - **Model default deviates from task.** The task specifies `qwen3:4b`; the default is `qwen3:4b-instruct`. The rationale is benchmarked and documented. The task-compliant model is fully supported via `OLLAMA_CHAT_MODEL=qwen3:4b`.
 - **Weather MCP requires Node.js.** The weather MCP server is a Node.js/TypeScript process. Node.js 18+ must be installed and `npm run build` must be executed once before starting the application.
 - **API keys required.** REST Countries v5 and WeatherAPI.com both require free registration. Without keys, country and weather tool calls return errors.
+- **Language support limited to English, German, Polish.** Questions in other languages return a trilingual error message; the LLM is not called. See [`docs/language-detection.md`](docs/language-detection.md) for the detection design and known edge cases.
