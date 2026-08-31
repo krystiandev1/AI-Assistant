@@ -3,7 +3,7 @@
 > A local-first AI assistant combining semantic product knowledge (RAG), real-time external data (MCP tool calling), and multi-tool orchestration — built with Spring AI, Ollama, and pgvector.
 
 **Stack:** Java 21 · Spring Boot 4.1.1 · Spring AI 2.0.1 · Ollama `qwen3:4b` · pgvector · MCP
-
+qq
 [Architecture](#architecture) · [Quick Start](#quick-start) · [Tests](#tests) · [Docs](#documentation)
 
 ---
@@ -28,6 +28,83 @@
 ## Demo
 
 > **TODO:** Add `docs/assets/demo.gif` — suggested: 60–90 s showing a multilingual multi-tool chain question, the evidence panel expanding to reveal tool calls and RAG sources, and a language switch mid-session.
+
+---
+
+## Quick Start
+
+### Try it with Claude Code
+
+If you have [Claude Code](https://claude.ai/code) installed, paste the prompt below into your terminal. Claude will check prerequisites, clone the repo, pull Ollama models, start all services, and open the app.
+
+```bash
+claude "Set up and run the AI Assistant project from https://github.com/krystiandev1/AI-Assistant.git.
+
+First, check that the following are installed and print their versions: Java 21+ (java -version), Docker (docker info), Node.js 18+ (node -v), Ollama (ollama list). If any prerequisite is missing, stop and tell me what to install.
+
+Then execute these steps in order:
+1. Clone the repository into ./AI-Assistant and cd into it.
+2. Pull Ollama models: ollama pull qwen3:4b-instruct and ollama pull qwen3-embedding:0.6b (these run locally — no API key needed).
+3. Create .env by copying .env.example. Leave WEATHER_API_KEY empty for now (weather tool will be unavailable without it; all other features work).
+4. Create countries-mcp-server/.env with REST_COUNTRIES_API_KEY=demo and REST_COUNTRIES_BASE_URL=https://restcountries.com/v3.1 (the key field is required by config but countries API works without auth).
+5. Start PostgreSQL: docker compose up -d postgres. Wait for it to be healthy.
+6. Build the weather MCP server: cd external/mcp-weather && npm install && npm run build && cd ../..
+7. Start the countries MCP server in a background process: ./mvnw spring-boot:run -pl countries-mcp-server
+8. Build and start the AI assistant: ./mvnw -pl ai-assistant package -DskipTests && java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
+9. When the app is up, open http://localhost:8080 in the browser.
+
+Report progress after each step and surface any errors immediately."
+```
+
+> Weather and country data require free API keys from [WeatherAPI.com](https://www.weatherapi.com/signup.aspx) and [REST Countries](https://restcountries.com/sign-up). The app starts without them — RAG and model-knowledge questions work out of the box.
+
+---
+
+### Manual setup
+
+**Prerequisites:** Java 21 · Docker · [Ollama](https://ollama.com) · Node.js 18+ · two free API keys (below)
+
+### 1. Pull Ollama models
+
+```bash
+ollama pull qwen3:4b-instruct      # default chat model
+ollama pull qwen3:4b               # task-specified model (optional)
+ollama pull qwen3-embedding:0.6b   # required
+```
+
+### 2. API keys
+
+| Service | Sign up | Purpose |
+|---|---|---|
+| REST Countries v5 | https://restcountries.com/sign-up | Country data |
+| WeatherAPI.com | https://www.weatherapi.com/signup.aspx | Current weather |
+
+```bash
+cp .env.example .env
+# set WEATHER_API_KEY in .env
+# create countries-mcp-server/.env with REST_COUNTRIES_API_KEY and REST_COUNTRIES_BASE_URL
+```
+
+### 3. Start services
+
+```bash
+# PostgreSQL
+docker compose up -d postgres
+
+# Build weather MCP (once after checkout)
+cd external/mcp-weather && npm install && npm run build && cd ../..
+
+# Countries MCP server (separate terminal)
+./mvnw spring-boot:run -pl countries-mcp-server
+
+# AI assistant
+./mvnw -pl ai-assistant package -DskipTests
+java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
+```
+
+Open **http://localhost:8080** — RAG ingestion runs automatically on first start (~5 s).
+
+> **Windows + SSL-intercepting antivirus?** Add `-Djavax.net.ssl.trustStoreType=Windows-ROOT` to the java commands above.
 
 ---
 
@@ -140,16 +217,44 @@ The "Use English for tool arguments" clause prevents localized city names (`"Mon
 
 ---
 
+## Prompt Injection Guard
+
+All user input passes through `PromptGuardAdvisor` at `Ordered.HIGHEST_PRECEDENCE` — before RAG retrieval, before any LLM call.
+
+The advisor matches the user message against 14 regex patterns:
+
+| Category | Covered patterns |
+|---|---|
+| Instruction override | `ignore * instructions`, `forget * instructions`, `disregard * instructions`, `override the system prompt` |
+| Role manipulation | `pretend you are`, `jailbreak`, `do anything now`, `new system prompt` |
+| Model control tokens | `[INST]`, `<<SYS>>`, `<\|system\|>`, `<\|im_start\|>`, `### System`, `### Instruction` |
+
+If any pattern matches, the request is rejected immediately — no RAG retrieval, no LLM call:
+
+```
+HTTP 400 Bad Request
+{"error": "Your request contains content that cannot be processed."}
+```
+
+→ [`PromptGuardAdvisor.java`](ai-assistant/src/main/java/com/example/cdq/config/PromptGuardAdvisor.java)
+
+---
+
 ## Showcase Questions
 
-| Question | Capability exercised |
-|---|---|
-| *What is the capital city of Germany?* | Countries MCP → `get_country("Germany")` |
-| *What is the temperature currently in Munich?* | Weather MCP → `get_weather("Munich")` |
-| *What is the temperature of the capital of Germany currently?* | Tool chaining: Countries → Berlin → Weather |
-| *What do you know about Berlin?* | Model knowledge (no tool, no RAG) |
-| *How does CDQ Fraud Guard verify bank accounts?* | RAG retrieval from pgvector |
-| *What is the population of France, and what is the weather in its capital?* | Multi-tool: Countries (population + capital) → Weather |
+| Lang | Question | Capability exercised |
+|---|---|---|
+| EN | *What is the capital city of Germany?* | Countries MCP → `get_country("Germany")` |
+| DE | *Was ist die Hauptstadt von Deutschland?* | Countries MCP (German input) |
+| PL | *Jakie jest miasto stołeczne Niemiec?* | Countries MCP (Polish input) |
+| EN | *What is the temperature currently in Munich?* | Weather MCP → `get_weather("Munich")` |
+| DE | *Wie ist das Wetter in München?* | Weather MCP (German input) |
+| PL | *Jaka jest temperatura w Monachium?* | Weather MCP — tests EN arg mapping (`"Monachium"` → `"Munich"`) |
+| EN | *What is the temperature of the capital of Germany currently?* | Tool chaining: Countries → Berlin → Weather |
+| PL | *Jaka jest temperatura w stolicy Niemiec?* | Tool chaining (Polish) |
+| EN | *How does CDQ Fraud Guard verify bank accounts?* | RAG retrieval from pgvector |
+| PL | *W jaki sposób CDQ Fraud Guard weryfikuje konta bankowe?* | RAG retrieval (cross-lingual: PL query → EN chunks) |
+| EN | *What is the population of France, and what is the weather in its capital?* | Multi-tool: Countries (population + capital) → Weather |
 
 <details>
 <summary>Sample responses (recorded live, qwen3:4b-instruct)</summary>
@@ -210,83 +315,6 @@ The default was chosen after benchmarking:
 | Spring AI overhead (advisors + pgvector) | ~111 ms | ~74 ms |
 
 → [Model selection rationale + think=false analysis](docs/why-ollama-instant.md) · [Raw benchmark data](docs/model-performance.md)
-
----
-
-## Quick Start
-
-### Try it with Claude Code
-
-If you have [Claude Code](https://claude.ai/code) installed, paste the prompt below into your terminal. Claude will check prerequisites, clone the repo, pull Ollama models, start all services, and open the app.
-
-```bash
-claude "Set up and run the AI Assistant project from https://github.com/krystiandev1/AI-Assistant.git.
-
-First, check that the following are installed and print their versions: Java 21+ (java -version), Docker (docker info), Node.js 18+ (node -v), Ollama (ollama list). If any prerequisite is missing, stop and tell me what to install.
-
-Then execute these steps in order:
-1. Clone the repository into ./AI-Assistant and cd into it.
-2. Pull Ollama models: ollama pull qwen3:4b-instruct and ollama pull qwen3-embedding:0.6b (these run locally — no API key needed).
-3. Create .env by copying .env.example. Leave WEATHER_API_KEY empty for now (weather tool will be unavailable without it; all other features work).
-4. Create countries-mcp-server/.env with REST_COUNTRIES_API_KEY=demo and REST_COUNTRIES_BASE_URL=https://restcountries.com/v3.1 (the key field is required by config but countries API works without auth).
-5. Start PostgreSQL: docker compose up -d postgres. Wait for it to be healthy.
-6. Build the weather MCP server: cd external/mcp-weather && npm install && npm run build && cd ../..
-7. Start the countries MCP server in a background process: ./mvnw spring-boot:run -pl countries-mcp-server
-8. Build and start the AI assistant: ./mvnw -pl ai-assistant package -DskipTests && java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
-9. When the app is up, open http://localhost:8080 in the browser.
-
-Report progress after each step and surface any errors immediately."
-```
-
-> Weather and country data require free API keys from [WeatherAPI.com](https://www.weatherapi.com/signup.aspx) and [REST Countries](https://restcountries.com/sign-up). The app starts without them — RAG and model-knowledge questions work out of the box.
-
----
-
-### Manual setup
-
-**Prerequisites:** Java 21 · Docker · [Ollama](https://ollama.com) · Node.js 18+ · two free API keys (below)
-
-### 1. Pull Ollama models
-
-```bash
-ollama pull qwen3:4b-instruct      # default chat model
-ollama pull qwen3:4b               # task-specified model (optional)
-ollama pull qwen3-embedding:0.6b   # required
-```
-
-### 2. API keys
-
-| Service | Sign up | Purpose |
-|---|---|---|
-| REST Countries v5 | https://restcountries.com/sign-up | Country data |
-| WeatherAPI.com | https://www.weatherapi.com/signup.aspx | Current weather |
-
-```bash
-cp .env.example .env
-# set WEATHER_API_KEY in .env
-# create countries-mcp-server/.env with REST_COUNTRIES_API_KEY and REST_COUNTRIES_BASE_URL
-```
-
-### 3. Start services
-
-```bash
-# PostgreSQL
-docker compose up -d postgres
-
-# Build weather MCP (once after checkout)
-cd external/mcp-weather && npm install && npm run build && cd ../..
-
-# Countries MCP server (separate terminal)
-./mvnw spring-boot:run -pl countries-mcp-server
-
-# AI assistant
-./mvnw -pl ai-assistant package -DskipTests
-java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
-```
-
-Open **http://localhost:8080** — RAG ingestion runs automatically on first start (~5 s).
-
-> **Windows + SSL-intercepting antivirus?** Add `-Djavax.net.ssl.trustStoreType=Windows-ROOT` to the java commands above.
 
 ---
 
