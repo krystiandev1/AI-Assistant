@@ -55,6 +55,46 @@ Three independent knowledge paths are available on every request. The model deci
 
 ---
 
+## Request Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as Chat UI
+    participant AS as AssistantService
+    participant PG as PromptGuardAdvisor
+    participant RAG as RAG Advisor
+    participant LH as LanguageHintAdvisor
+    participant LLM as qwen3:4b
+    participant MCP as MCP Tools
+    participant EV as EvidenceAccumulator
+
+    User->>UI: Question (EN / DE / PL)
+    UI->>AS: ChatRequest
+    AS->>AS: detect language (Lingua)
+    note over AS: unsupported → trilingual error, no LLM call
+    AS->>PG: before() — injection check
+    PG->>RAG: before() — embed query, retrieve chunks
+    RAG->>LH: before() — append language hint
+    LH->>LLM: prompt + system + RAG context + tool schemas
+
+    loop tool calling (model-driven)
+        LLM-->>AS: tool call request
+        AS->>MCP: EvidenceCapturingToolCallback.call()
+        MCP-->>EV: record (server, tool, args, outcome)
+        EV-->>LLM: tool result
+    end
+
+    LLM-->>AS: final answer in user's language
+    AS->>EV: record RAG documents from response metadata
+    AS-->>UI: ChatApiResponse { answer, evidence }
+    UI-->>User: answer + expandable evidence panel
+```
+
+Advisor order is intentional: RAG runs **before** the language hint so the pgvector embedding query uses the clean original question. The hint is invisible to the embedding model but visible to the LLM when composing the answer.
+
+---
+
 ## Knowledge Sources
 
 | Capability | Source | Integration | Example |
@@ -174,6 +214,35 @@ The default was chosen after benchmarking:
 ---
 
 ## Quick Start
+
+### Try it with Claude Code
+
+If you have [Claude Code](https://claude.ai/code) installed, paste the prompt below into your terminal. Claude will check prerequisites, clone the repo, pull Ollama models, start all services, and open the app.
+
+```bash
+claude "Set up and run the AI Assistant project from https://github.com/krystiandev1/AI-Assistant.git.
+
+First, check that the following are installed and print their versions: Java 21+ (java -version), Docker (docker info), Node.js 18+ (node -v), Ollama (ollama list). If any prerequisite is missing, stop and tell me what to install.
+
+Then execute these steps in order:
+1. Clone the repository into ./AI-Assistant and cd into it.
+2. Pull Ollama models: ollama pull qwen3:4b-instruct and ollama pull qwen3-embedding:0.6b (these run locally — no API key needed).
+3. Create .env by copying .env.example. Leave WEATHER_API_KEY empty for now (weather tool will be unavailable without it; all other features work).
+4. Create countries-mcp-server/.env with REST_COUNTRIES_API_KEY=demo and REST_COUNTRIES_BASE_URL=https://restcountries.com/v3.1 (the key field is required by config but countries API works without auth).
+5. Start PostgreSQL: docker compose up -d postgres. Wait for it to be healthy.
+6. Build the weather MCP server: cd external/mcp-weather && npm install && npm run build && cd ../..
+7. Start the countries MCP server in a background process: ./mvnw spring-boot:run -pl countries-mcp-server
+8. Build and start the AI assistant: ./mvnw -pl ai-assistant package -DskipTests && java -jar ai-assistant/target/ai-assistant-0.1.0-SNAPSHOT.jar
+9. When the app is up, open http://localhost:8080 in the browser.
+
+Report progress after each step and surface any errors immediately."
+```
+
+> Weather and country data require free API keys from [WeatherAPI.com](https://www.weatherapi.com/signup.aspx) and [REST Countries](https://restcountries.com/sign-up). The app starts without them — RAG and model-knowledge questions work out of the box.
+
+---
+
+### Manual setup
 
 **Prerequisites:** Java 21 · Docker · [Ollama](https://ollama.com) · Node.js 18+ · two free API keys (below)
 
