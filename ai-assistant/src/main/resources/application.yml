@@ -7,7 +7,7 @@ spring:
     init:
       mode: always
   datasource:
-    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:cdq_assistant}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cdq_assistant}
     username: ${POSTGRES_USER:cdq}
     password: ${POSTGRES_PASSWORD:cdq_secret}
     driver-class-name: org.postgresql.Driver
@@ -16,6 +16,7 @@ spring:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
       chat:
         model: ${OLLAMA_CHAT_MODEL:qwen3:4b-instruct}
+        num-ctx: 4096
         options:
           temperature: 0.0
       embedding:
