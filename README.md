@@ -27,7 +27,7 @@
 
 ## Demo
 
-> **TODO:** Add `docs/assets/demo.gif` — suggested: 60–90 s showing a multilingual multi-tool chain question, the evidence panel expanding to reveal tool calls and RAG sources, and a language switch mid-session.
+<video src="docs/assets/demo.mp4" autoplay loop muted playsinline></video>
 
 ---
 
