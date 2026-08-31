@@ -67,6 +67,13 @@
             <artifactId>spring-ai-markdown-document-reader</artifactId>
         </dependency>
 
+        <!-- Language detection for TARGET_OUTPUT_LANGUAGE instruction -->
+        <dependency>
+            <groupId>com.github.pemistahl</groupId>
+            <artifactId>lingua</artifactId>
+            <version>1.2.2</version>
+        </dependency>
+
         <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -159,6 +166,10 @@
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
                             <groups>integration</groups>
+                            <!-- Run from project root so that spring.config.import=file:.env
+                                 and STDIO paths (external/mcp-weather/...) resolve the same
+                                 way as spring-boot:run. -->
+                            <workingDirectory>${project.parent.basedir}</workingDirectory>
                         </configuration>
                     </plugin>
                 </plugins>
