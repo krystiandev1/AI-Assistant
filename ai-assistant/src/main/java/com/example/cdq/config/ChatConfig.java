@@ -38,7 +38,7 @@ class ChatConfig {
 
         return ChatClient.builder(chatModel)
             .defaultSystem(systemPrompt)
-            .defaultAdvisors(ragAdvisor, new LanguageHintAdvisor())
+            .defaultAdvisors(new PromptGuardAdvisor(), ragAdvisor, new LanguageHintAdvisor())
             .build();
     }
 }
